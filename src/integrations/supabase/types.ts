@@ -14,16 +14,781 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: string | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          new_values: Json | null
+          old_values: Json | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: string | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: string | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
+      beneficiaries: {
+        Row: {
+          address: string | null
+          birth_date: string
+          birth_place: string | null
+          created_at: string
+          first_name: string
+          gender: Database["public"]["Enums"]["gender"]
+          id: string
+          insured_id: string
+          last_name: string
+          phone: string | null
+          photo_url: string | null
+          relationship: Database["public"]["Enums"]["relationship_type"]
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          birth_date: string
+          birth_place?: string | null
+          created_at?: string
+          first_name: string
+          gender?: Database["public"]["Enums"]["gender"]
+          id?: string
+          insured_id: string
+          last_name: string
+          phone?: string | null
+          photo_url?: string | null
+          relationship: Database["public"]["Enums"]["relationship_type"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          birth_date?: string
+          birth_place?: string | null
+          created_at?: string
+          first_name?: string
+          gender?: Database["public"]["Enums"]["gender"]
+          id?: string
+          insured_id?: string
+          last_name?: string
+          phone?: string | null
+          photo_url?: string | null
+          relationship?: Database["public"]["Enums"]["relationship_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beneficiaries_insured_id_fkey"
+            columns: ["insured_id"]
+            isOneToOne: false
+            referencedRelation: "insured"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      care_authorizations: {
+        Row: {
+          approved_amount: number | null
+          authorization_number: string
+          beneficiary_id: string | null
+          care_date: string
+          care_type: string
+          ceiling_amount: number | null
+          created_at: string
+          diagnosis: string | null
+          doctor_name: string | null
+          estimated_amount: number
+          id: string
+          insured_id: string
+          notes: string | null
+          provider_id: string | null
+          status: Database["public"]["Enums"]["care_status"]
+          updated_at: string
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          approved_amount?: number | null
+          authorization_number: string
+          beneficiary_id?: string | null
+          care_date?: string
+          care_type: string
+          ceiling_amount?: number | null
+          created_at?: string
+          diagnosis?: string | null
+          doctor_name?: string | null
+          estimated_amount: number
+          id?: string
+          insured_id: string
+          notes?: string | null
+          provider_id?: string | null
+          status?: Database["public"]["Enums"]["care_status"]
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          approved_amount?: number | null
+          authorization_number?: string
+          beneficiary_id?: string | null
+          care_date?: string
+          care_type?: string
+          ceiling_amount?: number | null
+          created_at?: string
+          diagnosis?: string | null
+          doctor_name?: string | null
+          estimated_amount?: number
+          id?: string
+          insured_id?: string
+          notes?: string | null
+          provider_id?: string | null
+          status?: Database["public"]["Enums"]["care_status"]
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "care_authorizations_beneficiary_id_fkey"
+            columns: ["beneficiary_id"]
+            isOneToOne: false
+            referencedRelation: "beneficiaries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_authorizations_insured_id_fkey"
+            columns: ["insured_id"]
+            isOneToOne: false
+            referencedRelation: "insured"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_authorizations_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "healthcare_providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contracts: {
+        Row: {
+          address: string | null
+          client_code: string
+          contract_number: string
+          created_at: string
+          created_by: string | null
+          email: string | null
+          end_date: string | null
+          id: string
+          phone: string | null
+          raison_sociale: string
+          start_date: string
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          client_code: string
+          contract_number: string
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          end_date?: string | null
+          id?: string
+          phone?: string | null
+          raison_sociale: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          client_code?: string
+          contract_number?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          end_date?: string | null
+          id?: string
+          phone?: string | null
+          raison_sociale?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      contribution_formulas: {
+        Row: {
+          base_rate: number
+          ceiling: number | null
+          created_at: string
+          description: string | null
+          family_rate: number | null
+          id: string
+          is_active: boolean
+          name: string
+          options: Json | null
+          updated_at: string
+        }
+        Insert: {
+          base_rate: number
+          ceiling?: number | null
+          created_at?: string
+          description?: string | null
+          family_rate?: number | null
+          id?: string
+          is_active?: boolean
+          name: string
+          options?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          base_rate?: number
+          ceiling?: number | null
+          created_at?: string
+          description?: string | null
+          family_rate?: number | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          options?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      contributions: {
+        Row: {
+          amount: number
+          contract_id: string
+          created_at: string
+          formula_id: string | null
+          id: string
+          notes: string | null
+          paid_amount: number
+          payment_date: string | null
+          payment_reference: string | null
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          period_end: string
+          period_start: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          contract_id: string
+          created_at?: string
+          formula_id?: string | null
+          id?: string
+          notes?: string | null
+          paid_amount?: number
+          payment_date?: string | null
+          payment_reference?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          period_end: string
+          period_start: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          contract_id?: string
+          created_at?: string
+          formula_id?: string | null
+          id?: string
+          notes?: string | null
+          paid_amount?: number
+          payment_date?: string | null
+          payment_reference?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          period_end?: string
+          period_start?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contributions_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contributions_formula_id_fkey"
+            columns: ["formula_id"]
+            isOneToOne: false
+            referencedRelation: "contribution_formulas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          created_at: string
+          document_type: Database["public"]["Enums"]["document_type"]
+          file_size: number | null
+          file_url: string
+          id: string
+          mime_type: string | null
+          name: string
+          related_id: string
+          related_type: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_type: Database["public"]["Enums"]["document_type"]
+          file_size?: number | null
+          file_url: string
+          id?: string
+          mime_type?: string | null
+          name: string
+          related_id: string
+          related_type: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_type?: Database["public"]["Enums"]["document_type"]
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          mime_type?: string | null
+          name?: string
+          related_id?: string
+          related_type?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
+      health_declarations: {
+        Row: {
+          answer: boolean
+          created_at: string
+          declaration_date: string
+          details: string | null
+          id: string
+          insured_id: string
+          question: string
+        }
+        Insert: {
+          answer?: boolean
+          created_at?: string
+          declaration_date?: string
+          details?: string | null
+          id?: string
+          insured_id: string
+          question: string
+        }
+        Update: {
+          answer?: boolean
+          created_at?: string
+          declaration_date?: string
+          details?: string | null
+          id?: string
+          insured_id?: string
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_declarations_insured_id_fkey"
+            columns: ["insured_id"]
+            isOneToOne: false
+            referencedRelation: "insured"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      healthcare_providers: {
+        Row: {
+          address: string | null
+          city: string | null
+          convention_number: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_conventioned: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          provider_type: Database["public"]["Enums"]["provider_type"]
+          tarifs: Json | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          convention_number?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_conventioned?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          provider_type: Database["public"]["Enums"]["provider_type"]
+          tarifs?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          convention_number?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_conventioned?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          provider_type?: Database["public"]["Enums"]["provider_type"]
+          tarifs?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      insured: {
+        Row: {
+          address: string | null
+          birth_date: string
+          birth_place: string | null
+          contract_id: string
+          created_at: string
+          email: string | null
+          employer: string | null
+          first_name: string
+          gender: Database["public"]["Enums"]["gender"]
+          id: string
+          insurance_end_date: string | null
+          insurance_start_date: string
+          job_title: string | null
+          last_name: string
+          maiden_name: string | null
+          marital_status: Database["public"]["Enums"]["marital_status"]
+          matricule: string
+          phone: string | null
+          photo_url: string | null
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+          work_location: string | null
+        }
+        Insert: {
+          address?: string | null
+          birth_date: string
+          birth_place?: string | null
+          contract_id: string
+          created_at?: string
+          email?: string | null
+          employer?: string | null
+          first_name: string
+          gender?: Database["public"]["Enums"]["gender"]
+          id?: string
+          insurance_end_date?: string | null
+          insurance_start_date?: string
+          job_title?: string | null
+          last_name: string
+          maiden_name?: string | null
+          marital_status?: Database["public"]["Enums"]["marital_status"]
+          matricule: string
+          phone?: string | null
+          photo_url?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+          work_location?: string | null
+        }
+        Update: {
+          address?: string | null
+          birth_date?: string
+          birth_place?: string | null
+          contract_id?: string
+          created_at?: string
+          email?: string | null
+          employer?: string | null
+          first_name?: string
+          gender?: Database["public"]["Enums"]["gender"]
+          id?: string
+          insurance_end_date?: string | null
+          insurance_start_date?: string
+          job_title?: string | null
+          last_name?: string
+          maiden_name?: string | null
+          marital_status?: Database["public"]["Enums"]["marital_status"]
+          matricule?: string
+          phone?: string | null
+          photo_url?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+          work_location?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insured_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          first_name: string
+          id?: string
+          last_name: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      reimbursements: {
+        Row: {
+          approved_amount: number | null
+          beneficiary_id: string | null
+          care_authorization_id: string | null
+          care_type: string
+          claimed_amount: number
+          created_at: string
+          doctor_name: string | null
+          exclusions: Json | null
+          id: string
+          insured_id: string
+          medical_date: string
+          notes: string | null
+          paid_amount: number | null
+          paid_at: string | null
+          paid_by: string | null
+          payment_reference: string | null
+          provider_id: string | null
+          reimbursement_number: string
+          status: Database["public"]["Enums"]["reimbursement_status"]
+          updated_at: string
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          approved_amount?: number | null
+          beneficiary_id?: string | null
+          care_authorization_id?: string | null
+          care_type: string
+          claimed_amount: number
+          created_at?: string
+          doctor_name?: string | null
+          exclusions?: Json | null
+          id?: string
+          insured_id: string
+          medical_date: string
+          notes?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_reference?: string | null
+          provider_id?: string | null
+          reimbursement_number: string
+          status?: Database["public"]["Enums"]["reimbursement_status"]
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          approved_amount?: number | null
+          beneficiary_id?: string | null
+          care_authorization_id?: string | null
+          care_type?: string
+          claimed_amount?: number
+          created_at?: string
+          doctor_name?: string | null
+          exclusions?: Json | null
+          id?: string
+          insured_id?: string
+          medical_date?: string
+          notes?: string | null
+          paid_amount?: number | null
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_reference?: string | null
+          provider_id?: string | null
+          reimbursement_number?: string
+          status?: Database["public"]["Enums"]["reimbursement_status"]
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reimbursements_beneficiary_id_fkey"
+            columns: ["beneficiary_id"]
+            isOneToOne: false
+            referencedRelation: "beneficiaries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reimbursements_care_authorization_id_fkey"
+            columns: ["care_authorization_id"]
+            isOneToOne: false
+            referencedRelation: "care_authorizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reimbursements_insured_id_fkey"
+            columns: ["insured_id"]
+            isOneToOne: false
+            referencedRelation: "insured"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reimbursements_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "healthcare_providers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings: {
+        Row: {
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "agent" | "medecin" | "comptabilite" | "dirigeant"
+      care_status: "soumis" | "en_verification" | "valide" | "ferme" | "rejete"
+      document_type:
+        | "souscription"
+        | "remboursement"
+        | "prise_en_charge"
+        | "quittance"
+        | "justificatif"
+        | "autre"
+      gender: "M" | "F"
+      marital_status: "marie" | "celibataire" | "veuf" | "divorce" | "separe"
+      payment_status: "en_attente" | "paye" | "partiel" | "annule"
+      provider_type:
+        | "hopital"
+        | "clinique"
+        | "laboratoire"
+        | "pharmacie"
+        | "medecin"
+        | "autre"
+      reimbursement_status:
+        | "soumis"
+        | "verification"
+        | "valide"
+        | "paye"
+        | "rejete"
+      relationship_type: "conjoint" | "enfant" | "parent" | "autre"
+      subscription_status:
+        | "en_attente"
+        | "validee"
+        | "rejetee"
+        | "reserve_medicale"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +915,42 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "agent", "medecin", "comptabilite", "dirigeant"],
+      care_status: ["soumis", "en_verification", "valide", "ferme", "rejete"],
+      document_type: [
+        "souscription",
+        "remboursement",
+        "prise_en_charge",
+        "quittance",
+        "justificatif",
+        "autre",
+      ],
+      gender: ["M", "F"],
+      marital_status: ["marie", "celibataire", "veuf", "divorce", "separe"],
+      payment_status: ["en_attente", "paye", "partiel", "annule"],
+      provider_type: [
+        "hopital",
+        "clinique",
+        "laboratoire",
+        "pharmacie",
+        "medecin",
+        "autre",
+      ],
+      reimbursement_status: [
+        "soumis",
+        "verification",
+        "valide",
+        "paye",
+        "rejete",
+      ],
+      relationship_type: ["conjoint", "enfant", "parent", "autre"],
+      subscription_status: [
+        "en_attente",
+        "validee",
+        "rejetee",
+        "reserve_medicale",
+      ],
+    },
   },
 } as const
