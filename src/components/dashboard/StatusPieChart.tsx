@@ -1,5 +1,4 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import { mockDashboardStats } from '@/data/mockData';
 
 const COLORS = {
   soumis: 'hsl(38, 92%, 50%)',
@@ -17,21 +16,41 @@ const LABELS = {
   rejete: 'Rejeté',
 };
 
-export function StatusPieChart() {
-  const data = Object.entries(mockDashboardStats.reimbursementsByStatus).map(
-    ([key, value]) => ({
-      name: LABELS[key as keyof typeof LABELS],
-      value,
-      color: COLORS[key as keyof typeof COLORS],
-    })
-  );
+interface ReimbursementsByStatus {
+  soumis: number;
+  verification: number;
+  valide: number;
+  paye: number;
+  rejete: number;
+}
+
+interface StatusPieChartProps {
+  data: ReimbursementsByStatus;
+}
+
+export function StatusPieChart({ data }: StatusPieChartProps) {
+  const chartData = Object.entries(data).map(([key, value]) => ({
+    name: LABELS[key as keyof typeof LABELS],
+    value,
+    color: COLORS[key as keyof typeof COLORS],
+  }));
+
+  const totalCount = chartData.reduce((sum, item) => sum + item.value, 0);
+
+  if (totalCount === 0) {
+    return (
+      <div className="h-[280px] w-full flex items-center justify-center">
+        <p className="text-muted-foreground">Aucun remboursement</p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[280px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
-            data={data}
+            data={chartData}
             cx="50%"
             cy="50%"
             innerRadius={60}
@@ -39,7 +58,7 @@ export function StatusPieChart() {
             paddingAngle={3}
             dataKey="value"
           >
-            {data.map((entry, index) => (
+            {chartData.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color} />
             ))}
           </Pie>

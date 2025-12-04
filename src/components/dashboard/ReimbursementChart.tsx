@@ -7,14 +7,31 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { mockDashboardStats } from '@/data/mockData';
 
-export function ReimbursementChart() {
+interface MonthlyTrend {
+  month: string;
+  subscriptions: number;
+  reimbursements: number;
+}
+
+interface ReimbursementChartProps {
+  data: MonthlyTrend[];
+}
+
+export function ReimbursementChart({ data }: ReimbursementChartProps) {
+  if (data.length === 0) {
+    return (
+      <div className="h-[300px] w-full flex items-center justify-center">
+        <p className="text-muted-foreground">Aucune donnée disponible</p>
+      </div>
+    );
+  }
+
   return (
     <div className="h-[300px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
-          data={mockDashboardStats.monthlyTrends}
+          data={data}
           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
         >
           <defs>
