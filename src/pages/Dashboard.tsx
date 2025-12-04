@@ -1,13 +1,25 @@
-import { FileText, Users, CreditCard, TrendingUp, AlertCircle, Clock } from 'lucide-react';
+import { FileText, Users, CreditCard, TrendingUp, AlertCircle, Clock, RefreshCw } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ReimbursementChart } from '@/components/dashboard/ReimbursementChart';
 import { StatusPieChart } from '@/components/dashboard/StatusPieChart';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
-import { mockDashboardStats, mockAlerts, mockReimbursements } from '@/data/mockData';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useDashboardData } from '@/hooks/useDashboardData';
 import { cn } from '@/lib/utils';
 
 export default function Dashboard() {
+  const {
+    stats,
+    monthlyTrends,
+    reimbursementsByStatus,
+    recentActivity,
+    pendingReimbursements,
+    isLoading,
+    refetch,
+  } = useDashboardData();
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-KM', {
       style: 'currency',
@@ -16,9 +28,31 @@ export default function Dashboard() {
     }).format(amount);
   };
 
-  const pendingReimbursements = mockReimbursements.filter(
-    (r) => r.status === 'soumis' || r.status === 'verification'
-  );
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('fr-FR');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="page-header">
+          <div>
+            <Skeleton className="h-8 w-48 mb-2" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-32 rounded-xl" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Skeleton className="lg:col-span-2 h-96 rounded-xl" />
+          <Skeleton className="h-96 rounded-xl" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -28,45 +62,56 @@ export default function Dashboard() {
           <h1 className="page-title">Tableau de bord</h1>
           <p className="page-subtitle">Vue d'ensemble de l'activité MAC Assurances</p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Dernière mise à jour:</span>
-          <span className="text-sm font-medium text-foreground">
-            {new Date().toLocaleDateString('fr-FR', {
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-            })}
-          </span>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refetch}
+            className="gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Actualiser
+          </Button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Dernière mise à jour:</span>
+            <span className="text-sm font-medium text-foreground">
+              {new Date().toLocaleDateString('fr-FR', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Total Souscriptions"
-          value={mockDashboardStats.totalSubscriptions}
-          change={`+${mockDashboardStats.subscriptionsThisMonth} ce mois`}
-          changeType="positive"
+          title="Total Contrats"
+          value={stats.totalContracts}
+          change={`+${stats.contractsThisMonth} ce mois`}
+          changeType={stats.contractsThisMonth > 0 ? 'positive' : 'neutral'}
           icon={FileText}
         />
         <StatCard
           title="Assurés Actifs"
-          value={mockDashboardStats.activeInsured}
-          change="+8.2% vs mois dernier"
+          value={stats.activeInsured}
+          change="Statut validé"
           changeType="positive"
           icon={Users}
         />
         <StatCard
           title="Remboursements en cours"
-          value={mockDashboardStats.pendingReimbursements}
-          change="5 urgents"
-          changeType="neutral"
+          value={stats.pendingReimbursements}
+          change={stats.pendingReimbursements > 5 ? 'Urgents à traiter' : 'À traiter'}
+          changeType={stats.pendingReimbursements > 5 ? 'negative' : 'neutral'}
           icon={Clock}
         />
         <StatCard
-          title="Total mensuel"
-          value={formatCurrency(mockDashboardStats.monthlyReimbursementTotal)}
-          change="+12.5% vs mois dernier"
+          title="Total mensuel payé"
+          value={formatCurrency(stats.monthlyReimbursementTotal)}
+          change="Ce mois"
           changeType="positive"
           icon={TrendingUp}
         />
@@ -94,7 +139,7 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <ReimbursementChart />
+          <ReimbursementChart data={monthlyTrends} />
         </div>
 
         {/* Status Distribution */}
@@ -103,7 +148,7 @@ export default function Dashboard() {
             Statut des remboursements
           </h2>
           <p className="text-sm text-muted-foreground mb-4">Distribution par état</p>
-          <StatusPieChart />
+          <StatusPieChart data={reimbursementsByStatus} />
         </div>
       </div>
 
@@ -117,47 +162,22 @@ export default function Dashboard() {
               Voir tout
             </a>
           </div>
-          <RecentActivity />
+          <RecentActivity data={recentActivity} />
         </div>
 
-        {/* Alerts */}
+        {/* Quick Stats */}
         <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">Alertes</h2>
-            <span className="text-xs font-medium text-destructive bg-destructive/10 px-2 py-1 rounded-full">
-              {mockAlerts.filter((a) => !a.read).length} nouvelles
-            </span>
+            <h2 className="text-lg font-semibold text-foreground">Résumé statuts</h2>
           </div>
           <div className="space-y-3">
-            {mockAlerts.slice(0, 4).map((alert) => (
+            {Object.entries(reimbursementsByStatus).map(([status, count]) => (
               <div
-                key={alert.id}
-                className={cn(
-                  'p-3 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50',
-                  !alert.read && 'border-l-4',
-                  alert.type === 'warning' && 'border-l-warning',
-                  alert.type === 'error' && 'border-l-destructive',
-                  alert.type === 'info' && 'border-l-info',
-                  alert.type === 'success' && 'border-l-success'
-                )}
+                key={status}
+                className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
               >
-                <div className="flex items-start gap-2">
-                  <AlertCircle
-                    className={cn(
-                      'w-4 h-4 mt-0.5 flex-shrink-0',
-                      alert.type === 'warning' && 'text-warning',
-                      alert.type === 'error' && 'text-destructive',
-                      alert.type === 'info' && 'text-info',
-                      alert.type === 'success' && 'text-success'
-                    )}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">{alert.title}</p>
-                    <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                      {alert.message}
-                    </p>
-                  </div>
-                </div>
+                <StatusBadge status={status as any} />
+                <span className="text-lg font-bold text-foreground">{count}</span>
               </div>
             ))}
           </div>
@@ -184,32 +204,39 @@ export default function Dashboard() {
             </a>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>N° Remboursement</th>
-                <th>Assuré</th>
-                <th>Montant</th>
-                <th>Date soins</th>
-                <th>Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pendingReimbursements.map((r) => (
-                <tr key={r.id}>
-                  <td className="font-medium text-foreground">{r.reimbursementNumber}</td>
-                  <td>{r.insuredName}</td>
-                  <td className="font-semibold">{formatCurrency(r.amount)}</td>
-                  <td>{r.medicalDate.toLocaleDateString('fr-FR')}</td>
-                  <td>
-                    <StatusBadge status={r.status} />
-                  </td>
+        {pendingReimbursements.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>N° Remboursement</th>
+                  <th>Assuré</th>
+                  <th>Montant</th>
+                  <th>Date soins</th>
+                  <th>Statut</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {pendingReimbursements.map((r) => (
+                  <tr key={r.id}>
+                    <td className="font-medium text-foreground">{r.reimbursement_number}</td>
+                    <td>{r.insured_name}</td>
+                    <td className="font-semibold">{formatCurrency(r.claimed_amount)}</td>
+                    <td>{formatDate(r.medical_date)}</td>
+                    <td>
+                      <StatusBadge status={r.status as any} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="p-12 text-center">
+            <Clock className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+            <p className="text-muted-foreground">Aucun remboursement en attente</p>
+          </div>
+        )}
       </div>
     </div>
   );

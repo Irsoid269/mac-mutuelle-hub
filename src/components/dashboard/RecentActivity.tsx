@@ -1,29 +1,62 @@
-import { mockAuditLogs } from '@/data/mockData';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { FileText, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
+import { FileText, RefreshCw, CheckCircle, AlertCircle, Trash2, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const actionIcons = {
+interface AuditLog {
+  id: string;
+  action: string;
+  entity_type: string;
+  details: string | null;
+  user_name: string | null;
+  created_at: string;
+}
+
+interface RecentActivityProps {
+  data: AuditLog[];
+}
+
+const actionIcons: Record<string, typeof FileText> = {
   CREATE: FileText,
+  INSERT: FileText,
   UPDATE: RefreshCw,
   VALIDATE: CheckCircle,
-  DELETE: AlertCircle,
+  DELETE: Trash2,
 };
 
-const actionColors = {
+const actionColors: Record<string, string> = {
   CREATE: 'bg-success/10 text-success',
+  INSERT: 'bg-success/10 text-success',
   UPDATE: 'bg-info/10 text-info',
   VALIDATE: 'bg-primary/10 text-primary',
   DELETE: 'bg-destructive/10 text-destructive',
 };
 
-export function RecentActivity() {
+const actionLabels: Record<string, string> = {
+  CREATE: 'Création',
+  INSERT: 'Création',
+  UPDATE: 'Modification',
+  VALIDATE: 'Validation',
+  DELETE: 'Suppression',
+};
+
+export function RecentActivity({ data }: RecentActivityProps) {
+  if (data.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <Activity className="w-12 h-12 text-muted-foreground/50 mb-3" />
+        <p className="text-muted-foreground">Aucune activité récente</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      {mockAuditLogs.map((log) => {
-        const Icon = actionIcons[log.action as keyof typeof actionIcons] || FileText;
-        const colorClass = actionColors[log.action as keyof typeof actionColors] || 'bg-muted text-muted-foreground';
+      {data.map((log) => {
+        const actionKey = log.action.toUpperCase();
+        const Icon = actionIcons[actionKey] || FileText;
+        const colorClass = actionColors[actionKey] || 'bg-muted text-muted-foreground';
+        const actionLabel = actionLabels[actionKey] || log.action;
 
         return (
           <div
@@ -35,11 +68,11 @@ export function RecentActivity() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground line-clamp-1">
-                {log.details}
+                {log.details || `${actionLabel} - ${log.entity_type}`}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {log.userName} •{' '}
-                {formatDistanceToNow(log.timestamp, { addSuffix: true, locale: fr })}
+                {log.user_name || 'Système'} •{' '}
+                {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: fr })}
               </p>
             </div>
           </div>
