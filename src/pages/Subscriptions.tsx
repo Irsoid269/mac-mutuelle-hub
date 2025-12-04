@@ -17,28 +17,40 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { mockSubscriptions, mockInsured } from '@/data/mockData';
-import { SubscriptionStatus } from '@/types';
+import { useContractsData } from '@/hooks/useContractsData';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { SubscriptionForm } from '@/components/forms/SubscriptionForm';
+import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 export default function Subscriptions() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
 
-  const filteredSubscriptions = mockSubscriptions.filter((sub) => {
-    const matchesSearch =
-      sub.contractNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sub.raisonSociale.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || sub.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const { contracts, stats, isLoading, refetch } = useContractsData(searchTerm, statusFilter);
 
-  const getInsuredName = (insuredId: string) => {
-    const insured = mockInsured.find((i) => i.id === insuredId);
-    return insured ? `${insured.firstName} ${insured.lastName}` : 'N/A';
+  const getInsuredName = (insuredList?: { first_name: string; last_name: string }[]) => {
+    if (!insuredList || insuredList.length === 0) return 'N/A';
+    const first = insuredList[0];
+    return `${first.first_name} ${first.last_name}`;
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-12 w-full" />
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-20" />
+          ))}
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -47,7 +59,7 @@ export default function Subscriptions() {
         <div>
           <h1 className="page-title">Gestion des Souscriptions</h1>
           <p className="page-subtitle">
-            {mockSubscriptions.length} souscriptions au total
+            {stats.total} souscriptions au total
           </p>
         </div>
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -61,7 +73,7 @@ export default function Subscriptions() {
             <DialogHeader>
               <DialogTitle>Formulaire de Souscription Familiale</DialogTitle>
             </DialogHeader>
-            <SubscriptionForm onClose={() => setIsFormOpen(false)} />
+            <SubscriptionForm onClose={() => { setIsFormOpen(false); refetch(); }} />
           </DialogContent>
         </Dialog>
       </div>
@@ -99,10 +111,10 @@ export default function Subscriptions() {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'En attente', count: mockSubscriptions.filter((s) => s.status === 'en_attente').length, color: 'bg-warning/10 text-warning' },
-          { label: 'Validées', count: mockSubscriptions.filter((s) => s.status === 'validee').length, color: 'bg-success/10 text-success' },
-          { label: 'Rejetées', count: mockSubscriptions.filter((s) => s.status === 'rejetee').length, color: 'bg-destructive/10 text-destructive' },
-          { label: 'Réserve médicale', count: mockSubscriptions.filter((s) => s.status === 'reserve_medicale').length, color: 'bg-amber-100 text-amber-700' },
+          { label: 'En attente', count: stats.en_attente, color: 'bg-warning/10 text-warning' },
+          { label: 'Validées', count: stats.validee, color: 'bg-success/10 text-success' },
+          { label: 'Rejetées', count: stats.rejetee, color: 'bg-destructive/10 text-destructive' },
+          { label: 'Réserve médicale', count: stats.reserve_medicale, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
         ].map((stat) => (
           <div key={stat.label} className="bg-card p-4 rounded-xl border border-border">
             <p className="text-sm text-muted-foreground">{stat.label}</p>
@@ -126,50 +138,58 @@ export default function Subscriptions() {
               </tr>
             </thead>
             <tbody>
-              {filteredSubscriptions.map((sub) => (
-                <tr key={sub.id}>
-                  <td>
-                    <span className="font-mono text-sm font-medium text-foreground">
-                      {sub.contractNumber}
-                    </span>
-                  </td>
-                  <td>
-                    <div>
-                      <p className="font-medium text-foreground">{sub.raisonSociale}</p>
-                      <p className="text-xs text-muted-foreground">Code: {sub.clientCode}</p>
-                    </div>
-                  </td>
-                  <td>{getInsuredName(sub.insuredId)}</td>
-                  <td>{sub.createdAt.toLocaleDateString('fr-FR')}</td>
-                  <td>
-                    <StatusBadge status={sub.status} />
-                  </td>
-                  <td className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="gap-2">
-                          <Eye className="w-4 h-4" />
-                          Voir détails
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2">
-                          <Edit className="w-4 h-4" />
-                          Modifier
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="gap-2">
-                          <Download className="w-4 h-4" />
-                          Télécharger PDF
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+              {contracts.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                    Aucune souscription trouvée
                   </td>
                 </tr>
-              ))}
+              ) : (
+                contracts.map((contract) => (
+                  <tr key={contract.id}>
+                    <td>
+                      <span className="font-mono text-sm font-medium text-foreground">
+                        {contract.contract_number}
+                      </span>
+                    </td>
+                    <td>
+                      <div>
+                        <p className="font-medium text-foreground">{contract.raison_sociale}</p>
+                        <p className="text-xs text-muted-foreground">Code: {contract.client_code}</p>
+                      </div>
+                    </td>
+                    <td>{getInsuredName(contract.insured)}</td>
+                    <td>{format(new Date(contract.created_at), 'dd/MM/yyyy', { locale: fr })}</td>
+                    <td>
+                      <StatusBadge status={contract.status as any} />
+                    </td>
+                    <td className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem className="gap-2">
+                            <Eye className="w-4 h-4" />
+                            Voir détails
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2">
+                            <Edit className="w-4 h-4" />
+                            Modifier
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="gap-2">
+                            <Download className="w-4 h-4" />
+                            Télécharger PDF
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

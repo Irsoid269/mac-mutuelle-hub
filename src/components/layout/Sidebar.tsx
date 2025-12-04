@@ -2,6 +2,12 @@ import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import macLogo from '@/assets/mac-logo.png';
+
+interface SidebarProps {
+  collapsed?: boolean;
+  onToggle?: () => void;
+}
+
 import {
   LayoutDashboard,
   FileText,
@@ -14,17 +20,14 @@ import {
   ChevronLeft,
   Bell,
   Shield,
+  Wallet,
 } from 'lucide-react';
-
-interface SidebarProps {
-  collapsed?: boolean;
-  onToggle?: () => void;
-}
 
 const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Tableau de bord' },
   { path: '/subscriptions', icon: FileText, label: 'Souscriptions' },
   { path: '/insured', icon: Users, label: 'Assurés' },
+  { path: '/contributions', icon: Wallet, label: 'Cotisations' },
   { path: '/beneficiaries', icon: UserPlus, label: 'Ayants droit' },
   { path: '/reimbursements', icon: CreditCard, label: 'Remboursements' },
   { path: '/documents', icon: FolderOpen, label: 'Documents' },

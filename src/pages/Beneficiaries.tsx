@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Plus, Search, Edit, Trash2, User } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, User, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { mockFamilyMembers, mockInsured } from '@/data/mockData';
+import { useBeneficiariesData } from '@/hooks/useBeneficiariesData';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -19,38 +20,101 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+import { format, differenceInYears } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 export default function Beneficiaries() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
 
-  const getInsuredName = (insuredId: string) => {
-    const insured = mockInsured.find((i) => i.id === insuredId);
-    return insured ? `${insured.firstName} ${insured.lastName}` : 'N/A';
-  };
-
-  const filteredMembers = mockFamilyMembers.filter((member) => {
-    const fullName = `${member.firstName} ${member.lastName}`.toLowerCase();
-    const insuredName = getInsuredName(member.insuredId).toLowerCase();
-    return (
-      fullName.includes(searchTerm.toLowerCase()) ||
-      insuredName.includes(searchTerm.toLowerCase())
-    );
+  // Form state
+  const [formData, setFormData] = useState({
+    insured_id: '',
+    first_name: '',
+    last_name: '',
+    birth_date: '',
+    gender: 'M' as 'M' | 'F',
+    relationship: '',
   });
 
-  const handleSave = () => {
-    toast({
-      title: 'Ayant droit ajouté',
-      description: "L'ayant droit a été enregistré avec succès.",
-    });
-    setIsFormOpen(false);
+  const { beneficiaries, paidInsuredList, isLoading, refetch } = useBeneficiariesData(searchTerm);
+
+  const handleSave = async () => {
+    try {
+      const { error } = await supabase.from('beneficiaries').insert({
+        insured_id: formData.insured_id,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        birth_date: formData.birth_date,
+        gender: formData.gender,
+        relationship: formData.relationship as 'conjoint' | 'enfant' | 'parent' | 'autre',
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Ayant droit ajouté',
+        description: "L'ayant droit a été enregistré avec succès.",
+      });
+      setIsFormOpen(false);
+      setFormData({
+        insured_id: '',
+        first_name: '',
+        last_name: '',
+        birth_date: '',
+        gender: 'M',
+        relationship: '',
+      });
+      refetch();
+    } catch (error) {
+      toast({
+        title: 'Erreur',
+        description: "Impossible d'ajouter l'ayant droit.",
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase.from('beneficiaries').delete().eq('id', id);
+      if (error) throw error;
+
+      toast({
+        title: 'Ayant droit supprimé',
+        description: "L'ayant droit a été supprimé avec succès.",
+      });
+      refetch();
+    } catch (error) {
+      toast({
+        title: 'Erreur',
+        description: "Impossible de supprimer l'ayant droit.",
+        variant: 'destructive',
+      });
+    }
   };
 
   const relationshipLabels: Record<string, string> = {
+    conjoint: 'Conjoint(e)',
     enfant: 'Enfant',
     parent: 'Parent',
     autre: 'Autre',
   };
+
+  const calculateAge = (birthDate: string) => {
+    return differenceInYears(new Date(), new Date(birthDate));
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-12 w-full max-w-md" />
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -59,12 +123,12 @@ export default function Beneficiaries() {
         <div>
           <h1 className="page-title">Gestion des Ayants Droit</h1>
           <p className="page-subtitle">
-            {mockFamilyMembers.length} ayants droit enregistrés
+            {beneficiaries.length} ayants droit enregistrés
           </p>
         </div>
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
+            <Button className="gap-2" disabled={paidInsuredList.length === 0}>
               <Plus className="w-4 h-4" />
               Ajouter un ayant droit
             </Button>
@@ -75,15 +139,18 @@ export default function Beneficiaries() {
             </DialogHeader>
             <div className="space-y-4 mt-4">
               <div className="input-group">
-                <Label className="input-label">Assuré principal</Label>
-                <Select>
+                <Label className="input-label">Assuré principal (ayant payé sa cotisation)</Label>
+                <Select
+                  value={formData.insured_id}
+                  onValueChange={(v) => setFormData({ ...formData, insured_id: v })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner l'assuré" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockInsured.map((insured) => (
+                    {paidInsuredList.map((insured) => (
                       <SelectItem key={insured.id} value={insured.id}>
-                        {insured.firstName} {insured.lastName}
+                        {insured.first_name} {insured.last_name} ({insured.matricule})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -92,21 +159,36 @@ export default function Beneficiaries() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="input-group">
                   <Label className="input-label">Nom</Label>
-                  <Input placeholder="Nom de famille" />
+                  <Input
+                    placeholder="Nom de famille"
+                    value={formData.last_name}
+                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                  />
                 </div>
                 <div className="input-group">
                   <Label className="input-label">Prénom</Label>
-                  <Input placeholder="Prénom" />
+                  <Input
+                    placeholder="Prénom"
+                    value={formData.first_name}
+                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="input-group">
                   <Label className="input-label">Date de naissance</Label>
-                  <Input type="date" />
+                  <Input
+                    type="date"
+                    value={formData.birth_date}
+                    onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
+                  />
                 </div>
                 <div className="input-group">
                   <Label className="input-label">Sexe</Label>
-                  <Select>
+                  <Select
+                    value={formData.gender}
+                    onValueChange={(v) => setFormData({ ...formData, gender: v as 'M' | 'F' })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner" />
                     </SelectTrigger>
@@ -119,11 +201,15 @@ export default function Beneficiaries() {
               </div>
               <div className="input-group">
                 <Label className="input-label">Lien de parenté</Label>
-                <Select>
+                <Select
+                  value={formData.relationship}
+                  onValueChange={(v) => setFormData({ ...formData, relationship: v })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner le lien" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="conjoint">Conjoint(e)</SelectItem>
                     <SelectItem value="enfant">Enfant</SelectItem>
                     <SelectItem value="parent">Parent</SelectItem>
                     <SelectItem value="autre">Autre</SelectItem>
@@ -134,12 +220,38 @@ export default function Beneficiaries() {
                 <Button variant="outline" onClick={() => setIsFormOpen(false)}>
                   Annuler
                 </Button>
-                <Button onClick={handleSave}>Enregistrer</Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={
+                    !formData.insured_id ||
+                    !formData.first_name ||
+                    !formData.last_name ||
+                    !formData.birth_date ||
+                    !formData.relationship
+                  }
+                >
+                  Enregistrer
+                </Button>
               </div>
             </div>
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Info Alert */}
+      {paidInsuredList.length === 0 && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-yellow-50 border border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800">
+          <AlertCircle className="w-5 h-5 text-yellow-600" />
+          <div>
+            <p className="font-medium text-yellow-800 dark:text-yellow-200">
+              Aucun assuré avec cotisation payée
+            </p>
+            <p className="text-sm text-yellow-700 dark:text-yellow-300">
+              Les ayants droit ne peuvent être ajoutés qu'aux assurés ayant payé leur cotisation.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Search */}
       <div className="bg-card p-4 rounded-xl border border-border">
@@ -170,45 +282,61 @@ export default function Beneficiaries() {
               </tr>
             </thead>
             <tbody>
-              {filteredMembers.map((member) => (
-                <tr key={member.id}>
-                  <td>
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center">
-                        <User className="w-4 h-4 text-secondary-foreground" />
-                      </div>
-                      <span className="font-medium text-foreground">
-                        {member.firstName} {member.lastName}
-                      </span>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="text-primary">{getInsuredName(member.insuredId)}</span>
-                  </td>
-                  <td>
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                      {relationshipLabels[member.relationship]}
-                    </span>
-                  </td>
-                  <td>{member.birthDate.toLocaleDateString('fr-FR')}</td>
-                  <td>{member.age} ans</td>
-                  <td>{member.gender === 'M' ? 'Masculin' : 'Féminin'}</td>
-                  <td className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+              {beneficiaries.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                    Aucun ayant droit trouvé
                   </td>
                 </tr>
-              ))}
+              ) : (
+                beneficiaries.map((beneficiary) => (
+                  <tr key={beneficiary.id}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center">
+                          <User className="w-4 h-4 text-secondary-foreground" />
+                        </div>
+                        <span className="font-medium text-foreground">
+                          {beneficiary.first_name} {beneficiary.last_name}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <div>
+                        <span className="text-primary font-medium">
+                          {beneficiary.insured?.first_name} {beneficiary.insured?.last_name}
+                        </span>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {beneficiary.insured?.matricule}
+                        </p>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                        {relationshipLabels[beneficiary.relationship] || beneficiary.relationship}
+                      </span>
+                    </td>
+                    <td>{format(new Date(beneficiary.birth_date), 'dd/MM/yyyy', { locale: fr })}</td>
+                    <td>{calculateAge(beneficiary.birth_date)} ans</td>
+                    <td>{beneficiary.gender === 'M' ? 'Masculin' : 'Féminin'}</td>
+                    <td className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(beneficiary.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

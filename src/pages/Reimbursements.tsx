@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
   FileText,
   Upload,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,25 +36,38 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { mockReimbursements, mockInsured } from '@/data/mockData';
-import { ReimbursementStatus } from '@/types';
+import { useReimbursementsData } from '@/hooks/useReimbursementsData';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 export default function Reimbursements() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedReimbursement, setSelectedReimbursement] = useState<typeof mockReimbursements[0] | null>(null);
+  const [selectedReimbursement, setSelectedReimbursement] = useState<any>(null);
 
-  const filteredReimbursements = mockReimbursements.filter((r) => {
-    const matchesSearch =
-      r.reimbursementNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.insuredName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
-    return matchesSearch && matchesStatus;
+  // Form state
+  const [formData, setFormData] = useState({
+    insured_id: '',
+    claimed_amount: '',
+    medical_date: '',
+    doctor_name: '',
+    care_type: '',
+    notes: '',
   });
+
+  const {
+    reimbursements,
+    paidInsuredList,
+    stats,
+    isLoading,
+    createReimbursement,
+    updateStatus,
+  } = useReimbursementsData(searchTerm, statusFilter);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-KM', {
@@ -63,31 +77,79 @@ export default function Reimbursements() {
     }).format(amount);
   };
 
-  const handleStatusChange = (id: string, newStatus: ReimbursementStatus) => {
-    toast({
-      title: 'Statut mis à jour',
-      description: `Le remboursement a été passé en "${newStatus}"`,
-    });
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      await updateStatus(id, newStatus);
+      toast({
+        title: 'Statut mis à jour',
+        description: `Le remboursement a été passé en "${newStatus}"`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de mettre à jour le statut.',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const handleSubmit = () => {
-    toast({
-      title: 'Demande soumise',
-      description: 'La demande de remboursement a été enregistrée.',
-    });
-    setIsFormOpen(false);
+  const handleSubmit = async () => {
+    try {
+      await createReimbursement({
+        insured_id: formData.insured_id,
+        claimed_amount: parseFloat(formData.claimed_amount),
+        medical_date: formData.medical_date,
+        doctor_name: formData.doctor_name || undefined,
+        care_type: formData.care_type,
+        notes: formData.notes || undefined,
+      });
+      toast({
+        title: 'Demande soumise',
+        description: 'La demande de remboursement a été enregistrée.',
+      });
+      setIsFormOpen(false);
+      setFormData({
+        insured_id: '',
+        claimed_amount: '',
+        medical_date: '',
+        doctor_name: '',
+        care_type: '',
+        notes: '',
+      });
+    } catch (error) {
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de créer la demande de remboursement.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const workflowSteps = [
     { status: 'soumis', label: 'Soumis', description: 'Demande reçue' },
-    { status: 'verification', label: 'Vérification', description: 'En cours d\'analyse' },
+    { status: 'verification', label: 'Vérification', description: "En cours d'analyse" },
     { status: 'valide', label: 'Validé', description: 'Approuvé par le médecin-conseil' },
     { status: 'paye', label: 'Payé', description: 'Paiement effectué' },
   ];
 
-  const getCurrentStep = (status: ReimbursementStatus) => {
+  const getCurrentStep = (status: string) => {
     return workflowSteps.findIndex((s) => s.status === status);
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-12 w-full" />
+        <div className="grid grid-cols-5 gap-4">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-20" />
+          ))}
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -95,13 +157,11 @@ export default function Reimbursements() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Gestion des Remboursements</h1>
-          <p className="page-subtitle">
-            Workflow: Soumis → Vérification → Validé → Payé
-          </p>
+          <p className="page-subtitle">Workflow: Soumis → Vérification → Validé → Payé</p>
         </div>
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
+            <Button className="gap-2" disabled={paidInsuredList.length === 0}>
               <Plus className="w-4 h-4" />
               Nouveau remboursement
             </Button>
@@ -112,15 +172,18 @@ export default function Reimbursements() {
             </DialogHeader>
             <div className="space-y-4 mt-4">
               <div className="input-group">
-                <Label className="input-label">Assuré</Label>
-                <Select>
+                <Label className="input-label">Assuré (ayant payé sa cotisation)</Label>
+                <Select
+                  value={formData.insured_id}
+                  onValueChange={(v) => setFormData({ ...formData, insured_id: v })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner l'assuré" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockInsured.map((insured) => (
+                    {paidInsuredList.map((insured) => (
                       <SelectItem key={insured.id} value={insured.id}>
-                        {insured.firstName} {insured.lastName}
+                        {insured.first_name} {insured.last_name} ({insured.matricule})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -128,26 +191,50 @@ export default function Reimbursements() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="input-group">
-                  <Label className="input-label">Matricule</Label>
-                  <Input placeholder="Matricule employé" />
+                  <Label className="input-label">Montant réclamé (KMF)</Label>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={formData.claimed_amount}
+                    onChange={(e) => setFormData({ ...formData, claimed_amount: e.target.value })}
+                  />
                 </div>
                 <div className="input-group">
-                  <Label className="input-label">Montant (KMF)</Label>
-                  <Input type="number" placeholder="0" />
+                  <Label className="input-label">Type de soin</Label>
+                  <Select
+                    value={formData.care_type}
+                    onValueChange={(v) => setFormData({ ...formData, care_type: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="consultation">Consultation</SelectItem>
+                      <SelectItem value="hospitalisation">Hospitalisation</SelectItem>
+                      <SelectItem value="pharmacie">Pharmacie</SelectItem>
+                      <SelectItem value="analyses">Analyses</SelectItem>
+                      <SelectItem value="radiologie">Radiologie</SelectItem>
+                      <SelectItem value="autre">Autre</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
-              <div className="input-group">
-                <Label className="input-label">Montant en lettres</Label>
-                <Input placeholder="Ex: Cent mille francs comoriens" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="input-group">
                   <Label className="input-label">Date des soins</Label>
-                  <Input type="date" />
+                  <Input
+                    type="date"
+                    value={formData.medical_date}
+                    onChange={(e) => setFormData({ ...formData, medical_date: e.target.value })}
+                  />
                 </div>
                 <div className="input-group">
                   <Label className="input-label">Médecin traitant</Label>
-                  <Input placeholder="Dr. ..." />
+                  <Input
+                    placeholder="Dr. ..."
+                    value={formData.doctor_name}
+                    onChange={(e) => setFormData({ ...formData, doctor_name: e.target.value })}
+                  />
                 </div>
               </div>
               <div className="input-group">
@@ -157,25 +244,52 @@ export default function Reimbursements() {
                   <p className="text-sm text-muted-foreground">
                     Glissez vos fichiers ici ou cliquez pour parcourir
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    PDF, JPG, PNG (max 10MB)
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">PDF, JPG, PNG (max 10MB)</p>
                 </div>
               </div>
               <div className="input-group">
                 <Label className="input-label">Notes</Label>
-                <Textarea placeholder="Informations complémentaires..." />
+                <Textarea
+                  placeholder="Informations complémentaires..."
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                />
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <Button variant="outline" onClick={() => setIsFormOpen(false)}>
                   Annuler
                 </Button>
-                <Button onClick={handleSubmit}>Soumettre</Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={
+                    !formData.insured_id ||
+                    !formData.claimed_amount ||
+                    !formData.medical_date ||
+                    !formData.care_type
+                  }
+                >
+                  Soumettre
+                </Button>
               </div>
             </div>
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Info Alert */}
+      {paidInsuredList.length === 0 && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-yellow-50 border border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800">
+          <AlertCircle className="w-5 h-5 text-yellow-600" />
+          <div>
+            <p className="font-medium text-yellow-800 dark:text-yellow-200">
+              Aucun assuré avec cotisation payée
+            </p>
+            <p className="text-sm text-yellow-700 dark:text-yellow-300">
+              Les remboursements ne peuvent être demandés que pour les assurés ayant payé leur cotisation.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 bg-card p-4 rounded-xl border border-border">
@@ -211,17 +325,15 @@ export default function Reimbursements() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
-          { status: 'soumis', label: 'Soumis', color: 'bg-warning/10 text-warning' },
-          { status: 'verification', label: 'Vérification', color: 'bg-info/10 text-info' },
-          { status: 'valide', label: 'Validés', color: 'bg-success/10 text-success' },
-          { status: 'paye', label: 'Payés', color: 'bg-primary/10 text-primary' },
-          { status: 'rejete', label: 'Rejetés', color: 'bg-destructive/10 text-destructive' },
+          { status: 'soumis', label: 'Soumis', count: stats.soumis, color: 'bg-warning/10 text-warning' },
+          { status: 'verification', label: 'Vérification', count: stats.verification, color: 'bg-info/10 text-info' },
+          { status: 'valide', label: 'Validés', count: stats.valide, color: 'bg-success/10 text-success' },
+          { status: 'paye', label: 'Payés', count: stats.paye, color: 'bg-primary/10 text-primary' },
+          { status: 'rejete', label: 'Rejetés', count: stats.rejete, color: 'bg-destructive/10 text-destructive' },
         ].map((stat) => (
           <div key={stat.status} className="bg-card p-4 rounded-xl border border-border">
             <p className="text-sm text-muted-foreground">{stat.label}</p>
-            <p className={`text-2xl font-bold ${stat.color.split(' ')[1]}`}>
-              {mockReimbursements.filter((r) => r.status === stat.status).length}
-            </p>
+            <p className={`text-2xl font-bold ${stat.color.split(' ')[1]}`}>{stat.count}</p>
           </div>
         ))}
       </div>
@@ -234,97 +346,107 @@ export default function Reimbursements() {
               <tr>
                 <th>N° Remboursement</th>
                 <th>Assuré</th>
+                <th>Type de soin</th>
                 <th>Montant</th>
                 <th>Date soins</th>
-                <th>Médecin</th>
                 <th>Statut</th>
                 <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredReimbursements.map((r) => (
-                <tr key={r.id}>
-                  <td>
-                    <span className="font-mono text-sm font-medium text-foreground">
-                      {r.reimbursementNumber}
-                    </span>
-                  </td>
-                  <td>
-                    <div>
-                      <p className="font-medium text-foreground">{r.insuredName}</p>
-                      <p className="text-xs text-muted-foreground">{r.matricule}</p>
-                    </div>
-                  </td>
-                  <td className="font-semibold text-foreground">
-                    {formatCurrency(r.amount)}
-                  </td>
-                  <td>{r.medicalDate.toLocaleDateString('fr-FR')}</td>
-                  <td>{r.doctorName}</td>
-                  <td>
-                    <StatusBadge status={r.status} />
-                  </td>
-                  <td className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          className="gap-2"
-                          onClick={() => setSelectedReimbursement(r)}
-                        >
-                          <Eye className="w-4 h-4" />
-                          Voir détails
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        {r.status === 'soumis' && (
-                          <DropdownMenuItem
-                            className="gap-2"
-                            onClick={() => handleStatusChange(r.id, 'verification')}
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            Passer en vérification
-                          </DropdownMenuItem>
-                        )}
-                        {r.status === 'verification' && (
-                          <>
-                            <DropdownMenuItem
-                              className="gap-2"
-                              onClick={() => handleStatusChange(r.id, 'valide')}
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                              Valider
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="gap-2 text-destructive"
-                              onClick={() => handleStatusChange(r.id, 'rejete')}
-                            >
-                              <XCircle className="w-4 h-4" />
-                              Rejeter
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                        {r.status === 'valide' && (
-                          <DropdownMenuItem
-                            className="gap-2"
-                            onClick={() => handleStatusChange(r.id, 'paye')}
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            Marquer comme payé
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="gap-2">
-                          <FileText className="w-4 h-4" />
-                          Générer PDF
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+              {reimbursements.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                    Aucun remboursement trouvé
                   </td>
                 </tr>
-              ))}
+              ) : (
+                reimbursements.map((r) => (
+                  <tr key={r.id}>
+                    <td>
+                      <span className="font-mono text-sm font-medium text-foreground">
+                        {r.reimbursement_number}
+                      </span>
+                    </td>
+                    <td>
+                      <div>
+                        <p className="font-medium text-foreground">
+                          {r.insured?.first_name} {r.insured?.last_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{r.insured?.matricule}</p>
+                      </div>
+                    </td>
+                    <td className="capitalize">{r.care_type}</td>
+                    <td className="font-semibold text-foreground">
+                      {formatCurrency(r.claimed_amount)}
+                    </td>
+                    <td>{format(new Date(r.medical_date), 'dd/MM/yyyy', { locale: fr })}</td>
+                    <td>
+                      <StatusBadge status={r.status as any} />
+                    </td>
+                    <td className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="gap-2"
+                            onClick={() => setSelectedReimbursement(r)}
+                          >
+                            <Eye className="w-4 h-4" />
+                            Voir détails
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {r.status === 'soumis' && (
+                            <DropdownMenuItem
+                              className="gap-2"
+                              onClick={() => handleStatusChange(r.id, 'verification')}
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                              Passer en vérification
+                            </DropdownMenuItem>
+                          )}
+                          {r.status === 'verification' && (
+                            <>
+                              <DropdownMenuItem
+                                className="gap-2"
+                                onClick={() => handleStatusChange(r.id, 'valide')}
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                                Valider
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="gap-2 text-destructive"
+                                onClick={() => handleStatusChange(r.id, 'rejete')}
+                              >
+                                <XCircle className="w-4 h-4" />
+                                Rejeter
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          {r.status === 'valide' && (
+                            <DropdownMenuItem
+                              className="gap-2"
+                              onClick={() => handleStatusChange(r.id, 'paye')}
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                              Marquer comme payé
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="gap-2">
+                            <FileText className="w-4 h-4" />
+                            Générer PDF
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -378,26 +500,40 @@ export default function Reimbursements() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 rounded-lg bg-muted/50">
                   <p className="text-xs text-muted-foreground">N° Remboursement</p>
-                  <p className="font-mono font-medium">{selectedReimbursement.reimbursementNumber}</p>
+                  <p className="font-mono font-medium">{selectedReimbursement.reimbursement_number}</p>
                 </div>
                 <div className="p-3 rounded-lg bg-muted/50">
                   <p className="text-xs text-muted-foreground">Assuré</p>
-                  <p className="font-medium">{selectedReimbursement.insuredName}</p>
+                  <p className="font-medium">
+                    {selectedReimbursement.insured?.first_name} {selectedReimbursement.insured?.last_name}
+                  </p>
                 </div>
                 <div className="p-3 rounded-lg bg-muted/50">
-                  <p className="text-xs text-muted-foreground">Montant</p>
+                  <p className="text-xs text-muted-foreground">Montant réclamé</p>
                   <p className="font-bold text-lg text-primary">
-                    {formatCurrency(selectedReimbursement.amount)}
+                    {formatCurrency(selectedReimbursement.claimed_amount)}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <p className="text-xs text-muted-foreground">Type de soin</p>
+                  <p className="font-medium capitalize">{selectedReimbursement.care_type}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <p className="text-xs text-muted-foreground">Date des soins</p>
+                  <p className="font-medium">
+                    {format(new Date(selectedReimbursement.medical_date), 'dd MMMM yyyy', { locale: fr })}
                   </p>
                 </div>
                 <div className="p-3 rounded-lg bg-muted/50">
                   <p className="text-xs text-muted-foreground">Médecin</p>
-                  <p className="font-medium">{selectedReimbursement.doctorName}</p>
+                  <p className="font-medium">{selectedReimbursement.doctor_name || '-'}</p>
                 </div>
-                <div className="p-3 rounded-lg bg-muted/50 col-span-2">
-                  <p className="text-xs text-muted-foreground">Montant en lettres</p>
-                  <p className="font-medium">{selectedReimbursement.amountInWords}</p>
-                </div>
+                {selectedReimbursement.notes && (
+                  <div className="p-3 rounded-lg bg-muted/50 col-span-2">
+                    <p className="text-xs text-muted-foreground">Notes</p>
+                    <p className="font-medium">{selectedReimbursement.notes}</p>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-3">
