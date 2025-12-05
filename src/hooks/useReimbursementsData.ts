@@ -153,6 +153,7 @@ export function useReimbursementsData(searchTerm: string = '', statusFilter: str
     const channel = supabase
       .channel('reimbursements-data-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reimbursements' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contributions' }, fetchData)
       .subscribe();
 
     return () => {
