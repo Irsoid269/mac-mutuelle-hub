@@ -92,6 +92,7 @@ export function useContractsData(searchTerm: string = '', statusFilter: string =
     const channel = supabase
       .channel('contracts-data-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'contracts' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'insured' }, fetchData)
       .subscribe();
 
     return () => {
