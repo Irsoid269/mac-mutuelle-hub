@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 import macLogo from '@/assets/mac-logo.png';
 
 interface SidebarProps {
@@ -21,6 +22,7 @@ import {
   Bell,
   Shield,
   Wallet,
+  UserCog,
 } from 'lucide-react';
 
 const navItems = [
@@ -34,13 +36,29 @@ const navItems = [
 ];
 
 const adminItems = [
+  { path: '/users', icon: UserCog, label: 'Utilisateurs', adminOnly: true },
   { path: '/audit', icon: Shield, label: 'Audit Log' },
-  { path: '/settings', icon: Settings, label: 'Paramètres' },
+  { path: '/settings', icon: Settings, label: 'Paramètres', adminOnly: true },
 ];
 
 export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const location = useLocation();
+  const { profile, roles, isAdmin, signOut } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
+
+  const filteredAdminItems = adminItems.filter(item => !item.adminOnly || isAdmin);
+
+  const userInitials = profile 
+    ? `${profile.first_name[0] || ''}${profile.last_name[0] || ''}`.toUpperCase() 
+    : 'U';
+  const userName = profile 
+    ? `${profile.first_name} ${profile.last_name}` 
+    : 'Utilisateur';
+  const userRole = isAdmin 
+    ? 'Administrateur' 
+    : roles.length > 0 
+      ? roles[0].charAt(0).toUpperCase() + roles[0].slice(1) 
+      : 'Sans rôle';
 
   return (
     <aside
@@ -108,7 +126,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           </span>
         </div>
 
-        {adminItems.map((item) => (
+        {filteredAdminItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -134,16 +152,20 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           collapsed && 'justify-center'
         )}>
           <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center">
-            <span className="text-sm font-semibold text-primary-foreground">AD</span>
+            <span className="text-sm font-semibold text-primary-foreground">{userInitials}</span>
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0 animate-fade-in">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">Admin</p>
-              <p className="text-xs text-sidebar-foreground/60 truncate">Administrateur</p>
+              <p className="text-sm font-medium text-sidebar-foreground truncate">{userName}</p>
+              <p className="text-xs text-sidebar-foreground/60 truncate">{userRole}</p>
             </div>
           )}
           {!collapsed && (
-            <button className="p-1.5 rounded-lg hover:bg-sidebar-accent transition-colors">
+            <button 
+              onClick={signOut}
+              className="p-1.5 rounded-lg hover:bg-sidebar-accent transition-colors"
+              title="Se déconnecter"
+            >
               <LogOut className="w-4 h-4 text-sidebar-foreground/70" />
             </button>
           )}
