@@ -25,19 +25,29 @@ import {
   UserCog,
 } from 'lucide-react';
 
-const navItems = [
+type AppRole = 'admin' | 'agent' | 'medecin' | 'comptabilite' | 'dirigeant';
+
+interface NavItem {
+  path: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  allowedRoles?: AppRole[];
+  adminOnly?: boolean;
+}
+
+const navItems: NavItem[] = [
   { path: '/', icon: LayoutDashboard, label: 'Tableau de bord' },
-  { path: '/subscriptions', icon: FileText, label: 'Souscriptions' },
-  { path: '/insured', icon: Users, label: 'Assurés' },
-  { path: '/contributions', icon: Wallet, label: 'Cotisations' },
-  { path: '/beneficiaries', icon: UserPlus, label: 'Ayants droit' },
-  { path: '/reimbursements', icon: CreditCard, label: 'Remboursements' },
+  { path: '/subscriptions', icon: FileText, label: 'Souscriptions', allowedRoles: ['admin', 'agent', 'dirigeant'] },
+  { path: '/insured', icon: Users, label: 'Assurés', allowedRoles: ['admin', 'agent', 'dirigeant'] },
+  { path: '/contributions', icon: Wallet, label: 'Cotisations', allowedRoles: ['admin', 'comptabilite', 'dirigeant'] },
+  { path: '/beneficiaries', icon: UserPlus, label: 'Ayants droit', allowedRoles: ['admin', 'agent', 'dirigeant'] },
+  { path: '/reimbursements', icon: CreditCard, label: 'Remboursements', allowedRoles: ['admin', 'medecin', 'comptabilite', 'dirigeant'] },
   { path: '/documents', icon: FolderOpen, label: 'Documents' },
 ];
 
-const adminItems = [
+const adminItems: NavItem[] = [
   { path: '/users', icon: UserCog, label: 'Utilisateurs', adminOnly: true },
-  { path: '/audit', icon: Shield, label: 'Audit Log' },
+  { path: '/audit', icon: Shield, label: 'Audit Log', allowedRoles: ['admin', 'dirigeant'] },
   { path: '/settings', icon: Settings, label: 'Paramètres', adminOnly: true },
 ];
 
@@ -46,7 +56,16 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const { profile, roles, isAdmin, signOut } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const filteredAdminItems = adminItems.filter(item => !item.adminOnly || isAdmin);
+  // Helper function to check if user has access to an item
+  const hasAccessToItem = (item: NavItem) => {
+    if (isAdmin) return true;
+    if (item.adminOnly) return false;
+    if (!item.allowedRoles) return true;
+    return item.allowedRoles.some(role => roles.includes(role));
+  };
+
+  const filteredNavItems = navItems.filter(hasAccessToItem);
+  const filteredAdminItems = adminItems.filter(hasAccessToItem);
 
   const userInitials = profile 
     ? `${profile.first_name[0] || ''}${profile.last_name[0] || ''}`.toUpperCase() 
@@ -102,7 +121,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
           </span>
         </div>
 
-        {navItems.map((item) => (
+        {filteredNavItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
