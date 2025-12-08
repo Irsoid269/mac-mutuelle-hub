@@ -15,6 +15,7 @@ import Reimbursements from "./pages/Reimbursements";
 import Documents from "./pages/Documents";
 import AuditLog from "./pages/AuditLog";
 import Settings from "./pages/Settings";
+import Users from "./pages/Users";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -43,8 +44,17 @@ const App = () => (
               <Route path="/beneficiaries" element={<Beneficiaries />} />
               <Route path="/reimbursements" element={<Reimbursements />} />
               <Route path="/documents" element={<Documents />} />
+              <Route path="/users" element={
+                <ProtectedRoute requiredRole="admin">
+                  <Users />
+                </ProtectedRoute>
+              } />
               <Route path="/audit" element={<AuditLog />} />
-              <Route path="/settings" element={<Settings />} />
+              <Route path="/settings" element={
+                <ProtectedRoute requiredRole="admin">
+                  <Settings />
+                </ProtectedRoute>
+              } />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
