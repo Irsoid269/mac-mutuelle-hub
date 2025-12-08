@@ -37,19 +37,62 @@ const App = () => (
                 </ProtectedRoute>
               }
             >
+              {/* Dashboard - accessible à tous les staff */}
               <Route path="/" element={<Dashboard />} />
-              <Route path="/subscriptions" element={<Subscriptions />} />
-              <Route path="/insured" element={<Insured />} />
-              <Route path="/contributions" element={<Contributions />} />
-              <Route path="/beneficiaries" element={<Beneficiaries />} />
-              <Route path="/reimbursements" element={<Reimbursements />} />
+              
+              {/* Souscriptions - admin, agent, dirigeant */}
+              <Route path="/subscriptions" element={
+                <ProtectedRoute allowedRoles={['admin', 'agent', 'dirigeant']}>
+                  <Subscriptions />
+                </ProtectedRoute>
+              } />
+              
+              {/* Assurés - admin, agent, dirigeant */}
+              <Route path="/insured" element={
+                <ProtectedRoute allowedRoles={['admin', 'agent', 'dirigeant']}>
+                  <Insured />
+                </ProtectedRoute>
+              } />
+              
+              {/* Cotisations - admin, comptabilite, dirigeant */}
+              <Route path="/contributions" element={
+                <ProtectedRoute allowedRoles={['admin', 'comptabilite', 'dirigeant']}>
+                  <Contributions />
+                </ProtectedRoute>
+              } />
+              
+              {/* Ayants droit - admin, agent, dirigeant */}
+              <Route path="/beneficiaries" element={
+                <ProtectedRoute allowedRoles={['admin', 'agent', 'dirigeant']}>
+                  <Beneficiaries />
+                </ProtectedRoute>
+              } />
+              
+              {/* Remboursements - admin, medecin, comptabilite, dirigeant */}
+              <Route path="/reimbursements" element={
+                <ProtectedRoute allowedRoles={['admin', 'medecin', 'comptabilite', 'dirigeant']}>
+                  <Reimbursements />
+                </ProtectedRoute>
+              } />
+              
+              {/* Documents - accessible à tous les staff */}
               <Route path="/documents" element={<Documents />} />
+              
+              {/* Gestion utilisateurs - admin uniquement */}
               <Route path="/users" element={
                 <ProtectedRoute requiredRole="admin">
                   <Users />
                 </ProtectedRoute>
               } />
-              <Route path="/audit" element={<AuditLog />} />
+              
+              {/* Audit - admin, dirigeant */}
+              <Route path="/audit" element={
+                <ProtectedRoute allowedRoles={['admin', 'dirigeant']}>
+                  <AuditLog />
+                </ProtectedRoute>
+              } />
+              
+              {/* Paramètres - admin uniquement */}
               <Route path="/settings" element={
                 <ProtectedRoute requiredRole="admin">
                   <Settings />

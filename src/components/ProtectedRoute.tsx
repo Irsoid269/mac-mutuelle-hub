@@ -2,13 +2,16 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
+type AppRole = 'admin' | 'agent' | 'medecin' | 'comptabilite' | 'dirigeant';
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'agent' | 'medecin' | 'comptabilite' | 'dirigeant';
+  requiredRole?: AppRole;
+  allowedRoles?: AppRole[];
 }
 
-export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, isLoading, isStaff, hasRole } = useAuth();
+export function ProtectedRoute({ children, requiredRole, allowedRoles }: ProtectedRouteProps) {
+  const { user, isLoading, isStaff, hasRole, isAdmin } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -45,8 +48,13 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     );
   }
 
+  // Admin always has access
+  if (isAdmin) {
+    return <>{children}</>;
+  }
+
   // Check for specific role if required
-  if (requiredRole && !hasRole(requiredRole) && !hasRole('admin')) {
+  if (requiredRole && !hasRole(requiredRole)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4 p-8 bg-card rounded-xl border border-border max-w-md">
@@ -62,6 +70,28 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
         </div>
       </div>
     );
+  }
+
+  // Check for allowed roles if specified
+  if (allowedRoles && allowedRoles.length > 0) {
+    const hasAllowedRole = allowedRoles.some(role => hasRole(role));
+    if (!hasAllowedRole) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="text-center space-y-4 p-8 bg-card rounded-xl border border-border max-w-md">
+            <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
+              <svg className="w-8 h-8 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-foreground">Accès restreint</h2>
+            <p className="text-muted-foreground">
+              Vous n'avez pas les permissions nécessaires pour accéder à cette page.
+            </p>
+          </div>
+        </div>
+      );
+    }
   }
 
   return <>{children}</>;
