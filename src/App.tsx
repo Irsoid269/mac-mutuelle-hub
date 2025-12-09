@@ -12,6 +12,7 @@ import Insured from "./pages/Insured";
 import Contributions from "./pages/Contributions";
 import Beneficiaries from "./pages/Beneficiaries";
 import Reimbursements from "./pages/Reimbursements";
+import Providers from "./pages/Providers";
 import Documents from "./pages/Documents";
 import AuditLog from "./pages/AuditLog";
 import Settings from "./pages/Settings";
@@ -72,6 +73,13 @@ const App = () => (
               <Route path="/reimbursements" element={
                 <ProtectedRoute allowedRoles={['admin', 'medecin', 'comptabilite', 'dirigeant']}>
                   <Reimbursements />
+                </ProtectedRoute>
+              } />
+              
+              {/* Prestataires - admin, agent, medecin, dirigeant */}
+              <Route path="/providers" element={
+                <ProtectedRoute allowedRoles={['admin', 'agent', 'medecin', 'dirigeant']}>
+                  <Providers />
                 </ProtectedRoute>
               } />
               

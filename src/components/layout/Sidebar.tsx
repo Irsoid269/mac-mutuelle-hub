@@ -23,6 +23,7 @@ import {
   Shield,
   Wallet,
   UserCog,
+  Building2,
 } from 'lucide-react';
 
 type AppRole = 'admin' | 'agent' | 'medecin' | 'comptabilite' | 'dirigeant';
@@ -42,6 +43,7 @@ const navItems: NavItem[] = [
   { path: '/contributions', icon: Wallet, label: 'Cotisations', allowedRoles: ['admin', 'comptabilite', 'dirigeant'] },
   { path: '/beneficiaries', icon: UserPlus, label: 'Ayants droit', allowedRoles: ['admin', 'agent', 'dirigeant'] },
   { path: '/reimbursements', icon: CreditCard, label: 'Remboursements', allowedRoles: ['admin', 'medecin', 'comptabilite', 'dirigeant'] },
+  { path: '/providers', icon: Building2, label: 'Prestataires', allowedRoles: ['admin', 'agent', 'medecin', 'dirigeant'] },
   { path: '/documents', icon: FolderOpen, label: 'Documents' },
 ];
 

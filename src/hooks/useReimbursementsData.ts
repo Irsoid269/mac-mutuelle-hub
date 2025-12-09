@@ -109,7 +109,7 @@ export function useReimbursementsData(searchTerm: string = '', statusFilter: str
     insured_id: string;
     claimed_amount: number;
     medical_date: string;
-    doctor_name?: string;
+    provider_id?: string;
     care_type: string;
     notes?: string;
   }) => {
@@ -117,7 +117,12 @@ export function useReimbursementsData(searchTerm: string = '', statusFilter: str
     const reimbursementNumber = `RMB-${Date.now().toString(36).toUpperCase()}`;
 
     const { error } = await supabase.from('reimbursements').insert({
-      ...data,
+      insured_id: data.insured_id,
+      claimed_amount: data.claimed_amount,
+      medical_date: data.medical_date,
+      provider_id: data.provider_id || null,
+      care_type: data.care_type,
+      notes: data.notes || null,
       reimbursement_number: reimbursementNumber,
       status: 'soumis',
     });
