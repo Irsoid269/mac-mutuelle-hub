@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Filter, Download, Eye, Edit, MoreHorizontal } from 'lucide-react';
+import { Plus, Search, Filter, Download, Eye, Edit, MoreHorizontal, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -23,6 +23,9 @@ import { SubscriptionForm } from '@/components/forms/SubscriptionForm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { generateSubscriptionPDF, type SubscriptionPDFData } from '@/lib/pdfGenerator';
+import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Subscriptions() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,6 +38,52 @@ export default function Subscriptions() {
     if (!insuredList || insuredList.length === 0) return 'N/A';
     const first = insuredList[0];
     return `${first.first_name} ${first.last_name}`;
+  };
+
+  const handleGeneratePDF = async (contract: any) => {
+    try {
+      // Fetch full insured data with beneficiaries
+      const { data: insuredData } = await supabase
+        .from('insured')
+        .select('first_name, last_name, matricule, birth_date, gender, marital_status, phone, email, job_title, employer')
+        .eq('contract_id', contract.id);
+
+      // Fetch beneficiaries for the contract's insured
+      let beneficiariesData: any[] = [];
+      if (insuredData && insuredData.length > 0) {
+        const { data: beneficiaries } = await supabase
+          .from('beneficiaries')
+          .select('first_name, last_name, relationship, birth_date, gender')
+          .in('insured_id', insuredData.map(() => contract.id));
+        beneficiariesData = beneficiaries || [];
+      }
+
+      const pdfData: SubscriptionPDFData = {
+        contract_number: contract.contract_number,
+        client_code: contract.client_code,
+        raison_sociale: contract.raison_sociale,
+        status: contract.status,
+        start_date: contract.start_date,
+        created_at: contract.created_at,
+        address: contract.address,
+        phone: contract.phone,
+        email: contract.email,
+        insured: insuredData || [],
+        beneficiaries: beneficiariesData,
+      };
+
+      generateSubscriptionPDF(pdfData);
+      toast({
+        title: 'PDF généré',
+        description: "L'attestation de souscription a été téléchargée.",
+      });
+    } catch (error) {
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de générer le PDF.',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (isLoading) {
@@ -180,8 +229,8 @@ export default function Subscriptions() {
                             Modifier
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="gap-2">
-                            <Download className="w-4 h-4" />
+                          <DropdownMenuItem className="gap-2" onClick={() => handleGeneratePDF(contract)}>
+                            <FileText className="w-4 h-4" />
                             Télécharger PDF
                           </DropdownMenuItem>
                         </DropdownMenuContent>

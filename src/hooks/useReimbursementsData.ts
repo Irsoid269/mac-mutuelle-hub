@@ -55,7 +55,7 @@ export function useReimbursementsData(searchTerm: string = '', statusFilter: str
 
       setPaidInsuredList(paidInsured || []);
 
-      // Fetch reimbursements with insured info
+      // Fetch reimbursements with insured and provider info
       const { data, error } = await supabase
         .from('reimbursements')
         .select(`
@@ -64,6 +64,11 @@ export function useReimbursementsData(searchTerm: string = '', statusFilter: str
             first_name,
             last_name,
             matricule
+          ),
+          provider:provider_id (
+            name,
+            provider_type,
+            is_conventioned
           )
         `)
         .order('created_at', { ascending: false });

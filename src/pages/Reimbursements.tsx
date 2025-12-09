@@ -46,6 +46,7 @@ import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { generateReimbursementPDF, type ReimbursementPDFData } from '@/lib/pdfGenerator';
 
 export default function Reimbursements() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -138,6 +139,30 @@ export default function Reimbursements() {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleGeneratePDF = (reimbursement: any) => {
+    const pdfData: ReimbursementPDFData = {
+      reimbursement_number: reimbursement.reimbursement_number,
+      insured: reimbursement.insured,
+      provider: reimbursement.provider,
+      care_type: reimbursement.care_type,
+      medical_date: reimbursement.medical_date,
+      claimed_amount: reimbursement.claimed_amount,
+      approved_amount: reimbursement.approved_amount,
+      paid_amount: reimbursement.paid_amount,
+      status: reimbursement.status,
+      notes: reimbursement.notes,
+      created_at: reimbursement.created_at,
+      validated_at: reimbursement.validated_at,
+      paid_at: reimbursement.paid_at,
+    };
+    
+    generateReimbursementPDF(pdfData);
+    toast({
+      title: 'PDF généré',
+      description: 'La fiche de remboursement a été téléchargée.',
+    });
   };
 
   const workflowSteps = [
@@ -473,7 +498,7 @@ export default function Reimbursements() {
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="gap-2">
+                          <DropdownMenuItem className="gap-2" onClick={() => handleGeneratePDF(r)}>
                             <FileText className="w-4 h-4" />
                             Générer PDF
                           </DropdownMenuItem>
