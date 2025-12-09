@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Plus,
   Search,
@@ -11,6 +11,7 @@ import {
   FileText,
   Upload,
   AlertCircle,
+  Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,12 +32,14 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useReimbursementsData } from '@/hooks/useReimbursementsData';
+import { useProvidersData } from '@/hooks/useProvidersData';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
@@ -49,13 +52,14 @@ export default function Reimbursements() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedReimbursement, setSelectedReimbursement] = useState<any>(null);
+  const [filteredProviders, setFilteredProviders] = useState<any[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
     insured_id: '',
     claimed_amount: '',
     medical_date: '',
-    doctor_name: '',
+    provider_id: '',
     care_type: '',
     notes: '',
   });
@@ -68,6 +72,17 @@ export default function Reimbursements() {
     createReimbursement,
     updateStatus,
   } = useReimbursementsData(searchTerm, statusFilter);
+
+  const { providers, getProvidersByType } = useProvidersData();
+
+  // Update filtered providers when care type changes
+  useEffect(() => {
+    if (formData.care_type) {
+      setFilteredProviders(getProvidersByType(formData.care_type));
+    } else {
+      setFilteredProviders([]);
+    }
+  }, [formData.care_type, providers]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-KM', {
@@ -99,7 +114,7 @@ export default function Reimbursements() {
         insured_id: formData.insured_id,
         claimed_amount: parseFloat(formData.claimed_amount),
         medical_date: formData.medical_date,
-        doctor_name: formData.doctor_name || undefined,
+        provider_id: formData.provider_id || undefined,
         care_type: formData.care_type,
         notes: formData.notes || undefined,
       });
@@ -112,7 +127,7 @@ export default function Reimbursements() {
         insured_id: '',
         claimed_amount: '',
         medical_date: '',
-        doctor_name: '',
+        provider_id: '',
         care_type: '',
         notes: '',
       });
@@ -203,7 +218,7 @@ export default function Reimbursements() {
                   <Label className="input-label">Type de soin</Label>
                   <Select
                     value={formData.care_type}
-                    onValueChange={(v) => setFormData({ ...formData, care_type: v })}
+                    onValueChange={(v) => setFormData({ ...formData, care_type: v, provider_id: '' })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner" />
@@ -229,12 +244,33 @@ export default function Reimbursements() {
                   />
                 </div>
                 <div className="input-group">
-                  <Label className="input-label">Médecin traitant</Label>
-                  <Input
-                    placeholder="Dr. ..."
-                    value={formData.doctor_name}
-                    onChange={(e) => setFormData({ ...formData, doctor_name: e.target.value })}
-                  />
+                  <Label className="input-label">Prestataire</Label>
+                  <Select
+                    value={formData.provider_id}
+                    onValueChange={(v) => setFormData({ ...formData, provider_id: v })}
+                    disabled={!formData.care_type}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={formData.care_type ? "Sélectionner le prestataire" : "Choisir d'abord le type de soin"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredProviders.length === 0 ? (
+                        <SelectItem value="none" disabled>Aucun prestataire disponible</SelectItem>
+                      ) : (
+                        filteredProviders.map((provider) => (
+                          <SelectItem key={provider.id} value={provider.id}>
+                            <span className="flex items-center gap-2">
+                              <Building2 className="w-3 h-3" />
+                              {provider.name}
+                              {provider.is_conventioned && (
+                                <span className="text-xs text-success">(Conv.)</span>
+                              )}
+                            </span>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="input-group">

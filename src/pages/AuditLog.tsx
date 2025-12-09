@@ -31,6 +31,14 @@ const actionIcons = {
   UPDATE: RefreshCw,
   VALIDATE: CheckCircle,
   DELETE: Trash2,
+  STATUS_CHANGE: RefreshCw,
+  ROLE_ASSIGN: CheckCircle,
+  ROLE_REMOVE: Trash2,
+  PAYMENT: CheckCircle,
+  LOGIN: CheckCircle,
+  LOGOUT: AlertCircle,
+  EXPORT: FileText,
+  VIEW: FileText,
 };
 
 const actionColors = {
@@ -38,13 +46,29 @@ const actionColors = {
   UPDATE: 'bg-info/10 text-info border-info/20',
   VALIDATE: 'bg-primary/10 text-primary border-primary/20',
   DELETE: 'bg-destructive/10 text-destructive border-destructive/20',
+  STATUS_CHANGE: 'bg-warning/10 text-warning border-warning/20',
+  ROLE_ASSIGN: 'bg-success/10 text-success border-success/20',
+  ROLE_REMOVE: 'bg-destructive/10 text-destructive border-destructive/20',
+  PAYMENT: 'bg-primary/10 text-primary border-primary/20',
+  LOGIN: 'bg-success/10 text-success border-success/20',
+  LOGOUT: 'bg-muted text-muted-foreground border-muted',
+  EXPORT: 'bg-info/10 text-info border-info/20',
+  VIEW: 'bg-muted text-muted-foreground border-muted',
 };
 
-const actionLabels = {
+const actionLabels: Record<string, string> = {
   CREATE: 'Création',
   UPDATE: 'Modification',
   VALIDATE: 'Validation',
   DELETE: 'Suppression',
+  STATUS_CHANGE: 'Statut',
+  ROLE_ASSIGN: 'Rôle attribué',
+  ROLE_REMOVE: 'Rôle retiré',
+  PAYMENT: 'Paiement',
+  LOGIN: 'Connexion',
+  LOGOUT: 'Déconnexion',
+  EXPORT: 'Export',
+  VIEW: 'Consultation',
 };
 
 const entityLabels: Record<string, string> = {
@@ -54,8 +78,11 @@ const entityLabels: Record<string, string> = {
   beneficiary: 'Ayant droit',
   contribution: 'Cotisation',
   contract: 'Contrat',
-  user_role: 'Rôle utilisateur',
+  user_roles: 'Rôle utilisateur',
+  user: 'Utilisateur',
   document: 'Document',
+  healthcare_providers: 'Prestataire',
+  settings: 'Paramètres',
 };
 
 export default function AuditLog() {
