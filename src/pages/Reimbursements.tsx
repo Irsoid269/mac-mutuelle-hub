@@ -9,11 +9,11 @@ import {
   XCircle,
   MoreHorizontal,
   FileText,
-  Upload,
   AlertCircle,
   Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { FileUpload, type UploadedFile } from '@/components/ui/file-upload';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -293,13 +293,14 @@ export default function Reimbursements() {
               </div>
               <div className="input-group">
                 <Label className="input-label">Justificatifs</Label>
-                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
-                  <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Glissez vos fichiers ici ou cliquez pour parcourir
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">PDF, JPG, PNG (max 10MB)</p>
-                </div>
+                <FileUpload
+                  onFilesChange={(files) => {
+                    // Files are available for upload
+                    console.log('Files selected:', files);
+                  }}
+                  maxFiles={5}
+                  maxSizeMB={10}
+                />
               </div>
               <div className="input-group">
                 <Label className="input-label">Notes</Label>
