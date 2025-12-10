@@ -42,7 +42,7 @@ import { useReimbursementsData } from '@/hooks/useReimbursementsData';
 import { useProvidersData } from '@/hooks/useProvidersData';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -96,15 +96,12 @@ export default function Reimbursements() {
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
       await updateStatus(id, newStatus);
-      toast({
-        title: 'Statut mis à jour',
+      toast.success('Statut mis à jour', {
         description: `Le remboursement a été passé en "${newStatus}"`,
       });
     } catch (error) {
-      toast({
-        title: 'Erreur',
+      toast.error('Erreur', {
         description: 'Impossible de mettre à jour le statut.',
-        variant: 'destructive',
       });
     }
   };
@@ -119,8 +116,7 @@ export default function Reimbursements() {
         care_type: formData.care_type,
         notes: formData.notes || undefined,
       });
-      toast({
-        title: 'Demande soumise',
+      toast.success('Demande soumise', {
         description: 'La demande de remboursement a été enregistrée.',
       });
       setIsFormOpen(false);
@@ -133,10 +129,8 @@ export default function Reimbursements() {
         notes: '',
       });
     } catch (error) {
-      toast({
-        title: 'Erreur',
+      toast.error('Erreur', {
         description: 'Impossible de créer la demande de remboursement.',
-        variant: 'destructive',
       });
     }
   };
@@ -159,8 +153,7 @@ export default function Reimbursements() {
     };
     
     generateReimbursementPDF(pdfData);
-    toast({
-      title: 'PDF généré',
+    toast.success('PDF généré', {
       description: 'La fiche de remboursement a été téléchargée.',
     });
   };
