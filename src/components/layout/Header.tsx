@@ -9,8 +9,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { mockAlerts } from '@/data/mockData';
+import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
+import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -18,7 +21,23 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick, title }: HeaderProps) {
-  const unreadAlerts = mockAlerts.filter((a) => !a.read);
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const navigate = useNavigate();
+
+  const handleNotificationClick = (notification: any) => {
+    markAsRead(notification.id);
+    
+    // Navigate to the relevant page based on entity type
+    if (notification.entityType === 'reimbursements') {
+      navigate('/reimbursements');
+    } else if (notification.entityType === 'contracts') {
+      navigate('/subscriptions');
+    } else if (notification.entityType === 'insured') {
+      navigate('/insured');
+    } else if (notification.entityType === 'contributions') {
+      navigate('/contributions');
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -51,9 +70,9 @@ export function Header({ onMenuClick, title }: HeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="w-5 h-5 text-muted-foreground" />
-                {unreadAlerts.length > 0 && (
+                {unreadCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-medium animate-pulse-soft">
-                    {unreadAlerts.length}
+                    {unreadCount}
                   </span>
                 )}
               </Button>
@@ -62,39 +81,56 @@ export function Header({ onMenuClick, title }: HeaderProps) {
               <DropdownMenuLabel className="flex items-center justify-between">
                 <span>Notifications</span>
                 <span className="text-xs text-muted-foreground font-normal">
-                  {unreadAlerts.length} non lues
+                  {unreadCount} non lue{unreadCount > 1 ? 's' : ''}
                 </span>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {mockAlerts.slice(0, 4).map((alert) => (
-                <DropdownMenuItem
-                  key={alert.id}
-                  className={cn(
-                    'flex flex-col items-start gap-1 p-3 cursor-pointer',
-                    !alert.read && 'bg-muted/50'
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        'w-2 h-2 rounded-full',
-                        alert.type === 'warning' && 'bg-warning',
-                        alert.type === 'info' && 'bg-info',
-                        alert.type === 'success' && 'bg-success',
-                        alert.type === 'error' && 'bg-destructive'
-                      )}
-                    />
-                    <span className="font-medium text-sm">{alert.title}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2 pl-4">
-                    {alert.message}
-                  </p>
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="justify-center text-primary font-medium">
-                Voir toutes les notifications
-              </DropdownMenuItem>
+              {notifications.length === 0 ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  Aucune notification
+                </div>
+              ) : (
+                notifications.slice(0, 5).map((notification) => (
+                  <DropdownMenuItem
+                    key={notification.id}
+                    onClick={() => handleNotificationClick(notification)}
+                    className={cn(
+                      'flex flex-col items-start gap-1 p-3 cursor-pointer',
+                      !notification.read && 'bg-muted/50'
+                    )}
+                  >
+                    <div className="flex items-center gap-2 w-full">
+                      <span
+                        className={cn(
+                          'w-2 h-2 rounded-full flex-shrink-0',
+                          notification.type === 'warning' && 'bg-warning',
+                          notification.type === 'info' && 'bg-info',
+                          notification.type === 'success' && 'bg-success',
+                          notification.type === 'error' && 'bg-destructive'
+                        )}
+                      />
+                      <span className="font-medium text-sm flex-1">{notification.title}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2 pl-4">
+                      {notification.message}
+                    </p>
+                    <p className="text-xs text-muted-foreground/70 pl-4">
+                      {formatDistanceToNow(notification.timestamp, { addSuffix: true, locale: fr })}
+                    </p>
+                  </DropdownMenuItem>
+                ))
+              )}
+              {notifications.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={markAllAsRead}
+                    className="justify-center text-primary font-medium"
+                  >
+                    Marquer tout comme lu
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
