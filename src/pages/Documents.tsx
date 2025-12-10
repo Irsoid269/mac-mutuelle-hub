@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Download, FileText, File, Folder, MoreHorizontal, Eye, Trash2 } from 'lucide-react';
+import { Search, Download, FileText, File, Folder, MoreHorizontal, Eye, Trash2, Image, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -8,101 +8,100 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { useDocumentsData } from '@/hooks/useDocumentsData';
+import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { toast } from 'sonner';
 
-interface Document {
-  id: string;
-  name: string;
-  type: 'pdf' | 'excel' | 'word' | 'image';
-  category: string;
-  size: string;
-  createdAt: Date;
-  createdBy: string;
-}
-
-const mockDocuments: Document[] = [
-  {
-    id: '1',
-    name: 'Fiche_Souscription_MSF25-0001.pdf',
-    type: 'pdf',
-    category: 'Souscriptions',
-    size: '245 KB',
-    createdAt: new Date('2025-01-15'),
-    createdBy: 'Admin',
-  },
-  {
-    id: '2',
-    name: 'Remboursement_RMB-2025-0001.pdf',
-    type: 'pdf',
-    category: 'Remboursements',
-    size: '128 KB',
-    createdAt: new Date('2025-03-01'),
-    createdBy: 'Agent Ahmed',
-  },
-  {
-    id: '3',
-    name: 'Export_Assures_Mars2025.xlsx',
-    type: 'excel',
-    category: 'Exports',
-    size: '1.2 MB',
-    createdAt: new Date('2025-03-25'),
-    createdBy: 'Admin',
-  },
-  {
-    id: '4',
-    name: 'Justificatif_Ordonnance_001.jpg',
-    type: 'image',
-    category: 'Justificatifs',
-    size: '856 KB',
-    createdAt: new Date('2025-02-20'),
-    createdBy: 'Mohamed ABDALLAH',
-  },
-  {
-    id: '5',
-    name: 'Contrat_UICN_2025.pdf',
-    type: 'pdf',
-    category: 'Contrats',
-    size: '2.1 MB',
-    createdAt: new Date('2025-01-10'),
-    createdBy: 'Admin',
-  },
-  {
-    id: '6',
-    name: 'Rapport_Mensuel_Fevrier.pdf',
-    type: 'pdf',
-    category: 'Rapports',
-    size: '567 KB',
-    createdAt: new Date('2025-03-01'),
-    createdBy: 'Admin',
-  },
+const categories = [
+  { value: 'all', label: 'Tous' },
+  { value: 'souscription', label: 'Souscriptions' },
+  { value: 'remboursement', label: 'Remboursements' },
+  { value: 'prise_en_charge', label: 'Prises en charge' },
+  { value: 'quittance', label: 'Quittances' },
+  { value: 'justificatif', label: 'Justificatifs' },
+  { value: 'autre', label: 'Autres' },
 ];
 
-const categories = ['Tous', 'Souscriptions', 'Remboursements', 'Contrats', 'Justificatifs', 'Exports', 'Rapports'];
-
-const typeIcons = {
-  pdf: FileText,
-  excel: File,
-  word: File,
-  image: File,
+const getTypeIcon = (mimeType: string | null) => {
+  if (!mimeType) return File;
+  if (mimeType.includes('pdf')) return FileText;
+  if (mimeType.includes('image')) return Image;
+  if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return FileSpreadsheet;
+  return File;
 };
 
-const typeColors = {
-  pdf: 'text-destructive bg-destructive/10',
-  excel: 'text-success bg-success/10',
-  word: 'text-info bg-info/10',
-  image: 'text-primary bg-primary/10',
+const getTypeColor = (mimeType: string | null) => {
+  if (!mimeType) return 'text-muted-foreground bg-muted';
+  if (mimeType.includes('pdf')) return 'text-destructive bg-destructive/10';
+  if (mimeType.includes('image')) return 'text-primary bg-primary/10';
+  if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return 'text-success bg-success/10';
+  return 'text-muted-foreground bg-muted';
 };
 
 export default function Documents() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Tous');
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
-  const filteredDocuments = mockDocuments.filter((doc) => {
-    const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      selectedCategory === 'Tous' || doc.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const {
+    documents,
+    stats,
+    isLoading,
+    formatFileSize,
+    getDocumentTypeLabel,
+    downloadDocument,
+    deleteDocument,
+  } = useDocumentsData(searchTerm, selectedCategory);
+
+  const handleDownload = async (doc: any) => {
+    try {
+      await downloadDocument(doc);
+      toast.success('Téléchargement lancé', {
+        description: `${doc.name} est en cours de téléchargement.`,
+      });
+    } catch (error) {
+      toast.error('Erreur de téléchargement', {
+        description: 'Impossible de télécharger ce document.',
+      });
+    }
+  };
+
+  const handleDelete = async (doc: any) => {
+    try {
+      await deleteDocument(doc.id);
+      toast.success('Document supprimé', {
+        description: `${doc.name} a été supprimé.`,
+      });
+    } catch (error) {
+      toast.error('Erreur', {
+        description: 'Impossible de supprimer ce document.',
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-12 w-full" />
+        <div className="grid grid-cols-6 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <Skeleton key={i} className="h-20" />
+          ))}
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -111,13 +110,9 @@ export default function Documents() {
         <div>
           <h1 className="page-title">Gestion des Documents</h1>
           <p className="page-subtitle">
-            {mockDocuments.length} documents archivés
+            {stats.total} documents archivés
           </p>
         </div>
-        <Button className="gap-2">
-          <Download className="w-4 h-4" />
-          Tout télécharger
-        </Button>
       </div>
 
       {/* Filters */}
@@ -132,41 +127,44 @@ export default function Documents() {
               className="pl-10"
             />
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {categories.map((cat) => (
-              <Button
-                key={cat}
-                variant={selectedCategory === cat ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedCategory(cat)}
-                className="transition-all"
-              >
-                {cat}
-              </Button>
-            ))}
-          </div>
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="w-full md:w-48">
+              <SelectValue placeholder="Catégorie" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((cat) => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  {cat.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
       {/* Category Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {categories.slice(1).map((cat) => {
-          const count = mockDocuments.filter((d) => d.category === cat).length;
-          return (
-            <div
-              key={cat}
-              className={cn(
-                'bg-card p-4 rounded-xl border border-border cursor-pointer transition-all hover:shadow-md',
-                selectedCategory === cat && 'ring-2 ring-primary'
-              )}
-              onClick={() => setSelectedCategory(cat)}
-            >
-              <Folder className="w-8 h-8 text-primary mb-2" />
-              <p className="text-sm font-medium text-foreground">{cat}</p>
-              <p className="text-xs text-muted-foreground">{count} fichiers</p>
-            </div>
-          );
-        })}
+        {[
+          { key: 'souscription', label: 'Souscriptions', count: stats.souscription },
+          { key: 'remboursement', label: 'Remboursements', count: stats.remboursement },
+          { key: 'prise_en_charge', label: 'Prises en charge', count: stats.prise_en_charge },
+          { key: 'quittance', label: 'Quittances', count: stats.quittance },
+          { key: 'justificatif', label: 'Justificatifs', count: stats.justificatif },
+          { key: 'autre', label: 'Autres', count: stats.autre },
+        ].map((cat) => (
+          <div
+            key={cat.key}
+            className={cn(
+              'bg-card p-4 rounded-xl border border-border cursor-pointer transition-all hover:shadow-md',
+              selectedCategory === cat.key && 'ring-2 ring-primary'
+            )}
+            onClick={() => setSelectedCategory(cat.key)}
+          >
+            <Folder className="w-8 h-8 text-primary mb-2" />
+            <p className="text-sm font-medium text-foreground">{cat.label}</p>
+            <p className="text-xs text-muted-foreground">{cat.count} fichiers</p>
+          </div>
+        ))}
       </div>
 
       {/* Documents List */}
@@ -179,59 +177,65 @@ export default function Documents() {
                 <th>Catégorie</th>
                 <th>Taille</th>
                 <th>Date création</th>
-                <th>Créé par</th>
                 <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredDocuments.map((doc) => {
-                const Icon = typeIcons[doc.type];
-                const colorClass = typeColors[doc.type];
+              {documents.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                    Aucun document trouvé
+                  </td>
+                </tr>
+              ) : (
+                documents.map((doc) => {
+                  const Icon = getTypeIcon(doc.mime_type);
+                  const colorClass = getTypeColor(doc.mime_type);
 
-                return (
-                  <tr key={doc.id}>
-                    <td>
-                      <div className="flex items-center gap-3">
-                        <div className={cn('p-2 rounded-lg', colorClass)}>
-                          <Icon className="w-5 h-5" />
+                  return (
+                    <tr key={doc.id}>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <div className={cn('p-2 rounded-lg', colorClass)}>
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <span className="font-medium text-foreground">{doc.name}</span>
                         </div>
-                        <span className="font-medium text-foreground">{doc.name}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                        {doc.category}
-                      </span>
-                    </td>
-                    <td className="text-muted-foreground">{doc.size}</td>
-                    <td>{doc.createdAt.toLocaleDateString('fr-FR')}</td>
-                    <td>{doc.createdBy}</td>
-                    <td className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem className="gap-2">
-                            <Eye className="w-4 h-4" />
-                            Visualiser
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2">
-                            <Download className="w-4 h-4" />
-                            Télécharger
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2 text-destructive">
-                            <Trash2 className="w-4 h-4" />
-                            Supprimer
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                      <td>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                          {getDocumentTypeLabel(doc.document_type)}
+                        </span>
+                      </td>
+                      <td className="text-muted-foreground">{formatFileSize(doc.file_size)}</td>
+                      <td>{format(new Date(doc.created_at), 'dd/MM/yyyy HH:mm', { locale: fr })}</td>
+                      <td className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem className="gap-2" onClick={() => handleDownload(doc)}>
+                              <Eye className="w-4 h-4" />
+                              Visualiser
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="gap-2" onClick={() => handleDownload(doc)}>
+                              <Download className="w-4 h-4" />
+                              Télécharger
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="gap-2 text-destructive" onClick={() => handleDelete(doc)}>
+                              <Trash2 className="w-4 h-4" />
+                              Supprimer
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

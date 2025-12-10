@@ -1,15 +1,12 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-// Extend jsPDF type to include autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-    lastAutoTable: { finalY: number };
-  }
-}
+// Helper to get last table Y position
+const getLastTableY = (doc: jsPDF): number => {
+  return (doc as any).lastAutoTable?.finalY || 0;
+};
 
 // MAC ASSURANCES Logo as base64 (simplified version for PDF)
 const MAC_LOGO_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAABkCAYAAADDhn8LAAAACXBIWXMAAAsTAAALEwEAmpwYAAAFzklEQVR4nO2dW3LbMAwApXT3v3N7gnZy/7vpCdqeoJ2coJ2coE5O0E5O0E5O0MkJmskJOl0vdhIllCXZJgFSst8XzIwtSgQIgKQoy/Lq6uqKEEIIIYQQQgghhBBCCCGEEEIIIYQQQgghhBBCCCGEEEIIIYQQQgghhBBCCCGEkGOj+nv78w+ybQMhhJyY7RsIIeRkbN5ACCEnYvMGQgg5AZs3EELIEdn8/INsX0MIIUdi8wZCCDkCmzcQQsiR2LyBEEKOwOYNhBByBDZvIISQI7B5AyGEHIHNGwgh5EhsCIZNTU7J5g2EEHIENTO2QITQwgHUe4MIoYUDqPcGEUILB1DvDSKEFg6g3htECC0cQL03iBBaOIB6bxAhtHAA9d4gQmjhAOq9QYTQwgHUe4MIoYUDqPcGEUILB1DvDSKEFg6g3htECC0cQL03iBBaOIB6bxAhtHAA9d4gQmjhAOq9QYTQwgHUe4MIoYUDqPcGEUILB1DvDSKEFg6g3htECC0cQL03iBBaOIB6bxAhtHAA9d4gQmjhAOq9QYTQwgHUe4MIoYUDqPcGEUILB1DvDSKEFg6g3htECC0cQL03iBBaOIB6bxAhtHAA9d4gQmjhAOq9QYTQwgHUe4MIoYUDqPcGEUILB1DvDSKEFg6g3htECC0cQP/9f28IIeRIbN5ACCFHYPMGQgg5Aps3EELIEdi8gRBCjsDmDYQQcgQ2byCEkCOweQMhhByBzRsIIeQIbN5ACCFHYPMGQgg5Aps3EELIEdi8gRBCjsDmDYQQcgQ2byCEkCOweQMhhByJzRsIIeRIbN5ACCFHYvMGQgg5Eps3EELIkdi8gRBCjsTmDYQQciQ2byCEkCOxeQMhhByJzRsIIeRIbN5ACCFH4uoN//77/xchDJAQwEJRCGEkFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQQgghhBBCCCGEEEIIIYQQQgghhBBCCCGEEEIIIYQQQgghhBBCCCGEEEIIIcTxP+QHRJ2sTp0fAAAAAElFTkSuQmCC';
@@ -238,7 +235,7 @@ export const generateReimbursementPDF = (data: ReimbursementPDFData): void => {
   y = addSectionTitle(doc, 'INFORMATIONS FINANCIÈRES', y);
   
   // Financial table
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     head: [['Description', 'Montant']],
     body: [
@@ -263,7 +260,7 @@ export const generateReimbursementPDF = (data: ReimbursementPDFData): void => {
     margin: { left: 20, right: 20 },
   });
   
-  y = doc.lastAutoTable.finalY + 15;
+  y = getLastTableY(doc) + 15;
   
   // Status section
   y = addSectionTitle(doc, 'STATUT DU DOSSIER', y);
@@ -473,7 +470,7 @@ export const generateSubscriptionPDF = (data: SubscriptionPDFData): void => {
       genderLabels[ins.gender] || ins.gender,
     ]);
     
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       head: [['Type', 'Nom complet', 'Matricule', 'Date naissance', 'Genre']],
       body: insuredData,
@@ -490,7 +487,7 @@ export const generateSubscriptionPDF = (data: SubscriptionPDFData): void => {
       margin: { left: 15, right: 15 },
     });
     
-    y = doc.lastAutoTable.finalY + 10;
+    y = getLastTableY(doc) + 10;
   }
   
   // Beneficiaries
@@ -511,7 +508,7 @@ export const generateSubscriptionPDF = (data: SubscriptionPDFData): void => {
       ben.gender === 'M' ? 'Masculin' : 'Féminin',
     ]);
     
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       head: [['Nom complet', 'Lien de parenté', 'Date naissance', 'Genre']],
       body: beneficiaryData,
@@ -528,7 +525,7 @@ export const generateSubscriptionPDF = (data: SubscriptionPDFData): void => {
       margin: { left: 15, right: 15 },
     });
     
-    y = doc.lastAutoTable.finalY + 10;
+    y = getLastTableY(doc) + 10;
   }
   
   // Signature section

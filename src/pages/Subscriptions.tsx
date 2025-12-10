@@ -24,7 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { generateSubscriptionPDF, type SubscriptionPDFData } from '@/lib/pdfGenerator';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Subscriptions() {
@@ -73,15 +73,12 @@ export default function Subscriptions() {
       };
 
       generateSubscriptionPDF(pdfData);
-      toast({
-        title: 'PDF généré',
+      toast.success('PDF généré', {
         description: "L'attestation de souscription a été téléchargée.",
       });
     } catch (error) {
-      toast({
-        title: 'Erreur',
+      toast.error('Erreur', {
         description: 'Impossible de générer le PDF.',
-        variant: 'destructive',
       });
     }
   };
