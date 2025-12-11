@@ -443,7 +443,7 @@ export const generateSubscriptionPDF = (data: SubscriptionPDFData): void => {
   doc.setTextColor(...COLORS.text);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('Date d\'effet:', col2, y);
+  doc.text("Date d'effet:", col2, y);
   doc.setFont('helvetica', 'normal');
   doc.text(formatDate(data.start_date), col2 + 30, y);
   
@@ -454,13 +454,6 @@ export const generateSubscriptionPDF = (data: SubscriptionPDFData): void => {
     y = addSectionTitle(doc, 'ASSURÉS', y);
     
     const genderLabels: Record<string, string> = { M: 'Masculin', F: 'Féminin' };
-    const maritalLabels: Record<string, string> = {
-      marie: 'Marié(e)',
-      celibataire: 'Célibataire',
-      veuf: 'Veuf(ve)',
-      divorce: 'Divorcé(e)',
-      separe: 'Séparé(e)',
-    };
     
     const insuredData = data.insured.map((ins, index) => [
       index === 0 ? 'Principal' : `Assuré ${index + 1}`,
@@ -547,4 +540,456 @@ export const generateSubscriptionPDF = (data: SubscriptionPDFData): void => {
   addFooter(doc);
   
   doc.save(`Souscription_${data.contract_number}.pdf`);
+};
+
+// ================== FICHE DE SOUSCRIPTION FAMILIALE ==================
+
+export interface FicheSubscriptionPDFData {
+  // Contractant
+  client_code: string;
+  contract_number: string;
+  raison_sociale: string;
+  address?: string;
+  
+  // Assuré principal
+  insured: {
+    last_name: string;
+    first_name: string;
+    maiden_name?: string;
+    birth_date: string;
+    birth_place?: string;
+    address?: string;
+    service_entry_date?: string;
+    job_title?: string;
+    work_location?: string;
+    phone?: string;
+    fax?: string;
+    email?: string;
+    insurance_start_date?: string;
+    marital_status: string;
+    gender: string;
+  };
+  
+  // Conjoint
+  spouse?: {
+    last_name: string;
+    first_name: string;
+    birth_date: string;
+    birth_place?: string;
+    address?: string;
+    service_entry_date?: string;
+    job_title?: string;
+    work_location?: string;
+    insurance_start_date?: string;
+  };
+  
+  // Famille
+  family_members: {
+    last_name: string;
+    first_name: string;
+    birth_date: string;
+    relationship: string;
+    age?: string;
+    gender: string;
+  }[];
+  
+  // Déclarations de santé
+  health_declarations: {
+    person_name: string;
+    gender: string;
+    taille?: string;
+    poids?: string;
+    tension?: string;
+    questions: {
+      question: string;
+      answer: string;
+    }[];
+  }[];
+  
+  // Lieu et date de signature
+  signature_location?: string;
+  signature_date?: string;
+}
+
+export const generateFicheSubscriptionPDF = (data: FicheSubscriptionPDFData): void => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  
+  // ===== PAGE 1 =====
+  // Header
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(0, 0, pageWidth, 40, 'F');
+  doc.setFillColor(...COLORS.accent);
+  doc.rect(0, 40, pageWidth, 3, 'F');
+  
+  // Company info
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(255, 255, 255);
+  doc.text('MAC ASSURANCES', 15, 18);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text('Mutuelles et Assurances des Comores', 15, 26);
+  doc.text('Avenue de Strasbourg, Moroni-Bacha', 15, 32);
+  
+  // 10 ans badge
+  doc.setFillColor(255, 255, 255);
+  doc.circle(pageWidth - 30, 22, 12, 'F');
+  doc.setTextColor(...COLORS.primary);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('10', pageWidth - 33, 22);
+  doc.setFontSize(8);
+  doc.text('ans', pageWidth - 33, 27);
+  
+  // Contact info
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text('Le contrat de confiance', pageWidth - 60, 15);
+  doc.text('www.macassurances.com', pageWidth - 60, 22);
+  doc.text('mac.assurances@gmail.com', pageWidth - 60, 29);
+  
+  let y = 55;
+  
+  // Title
+  doc.setTextColor(...COLORS.primary);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('FORMULAIRE DE SOUSCRIPTION', pageWidth / 2, y, { align: 'center' });
+  y += 8;
+  doc.setFontSize(14);
+  doc.text('Assurance Maladie Familiale', pageWidth / 2, y, { align: 'center' });
+  
+  y += 15;
+  
+  // LE CONTRACTANT section
+  y = addSectionTitle(doc, 'LE CONTRACTANT', y);
+  
+  doc.setTextColor(...COLORS.text);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text(`CLIENT : ${data.client_code}`, 20, y);
+  doc.text(`SCM N°${data.contract_number}`, 100, y);
+  y += 8;
+  
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Raison Social : ${data.raison_sociale}`, 20, y);
+  y += 6;
+  doc.text(`Adresse : ${data.address || ''}`, 20, y);
+  
+  y += 15;
+  
+  // BULLETIN INDIVIDUEL DE SOUSCRIPTION
+  y = addSectionTitle(doc, 'BULLETIN INDIVIDUEL DE SOUSCRIPTION', y);
+  
+  // 1. Assuré
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...COLORS.primary);
+  doc.text('1. Assuré :', 20, y);
+  y += 8;
+  
+  doc.setTextColor(...COLORS.text);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  
+  const lineHeight = 6;
+  const labelWidth = 55;
+  const col1 = 20;
+  
+  const addFormLine = (label: string, value: string, yPos: number): number => {
+    doc.setFont('helvetica', 'bold');
+    doc.text(label + ' :', col1, yPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(value || '______________________________', col1 + labelWidth, yPos);
+    return yPos + lineHeight;
+  };
+  
+  y = addFormLine('Nom', data.insured.last_name, y);
+  y = addFormLine('Prénom', data.insured.first_name, y);
+  y = addFormLine("Nom de jeune fille (femme mariée)", data.insured.maiden_name || '', y);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Né le :', col1, y);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.insured.birth_date ? formatDate(data.insured.birth_date) : '________________', col1 + 20, y);
+  doc.text('à', col1 + 55, y);
+  doc.text(data.insured.birth_place || '________________', col1 + 65, y);
+  y += lineHeight;
+  
+  y = addFormLine('Adresse', data.insured.address || '', y);
+  y = addFormLine('Entrée du service de contractant le', data.insured.service_entry_date ? formatDate(data.insured.service_entry_date) : '', y);
+  y = addFormLine('Emploi', data.insured.job_title || '', y);
+  y = addFormLine('Lieu de Travail', data.insured.work_location || '', y);
+  y = addFormLine('Téléphone mobile', data.insured.phone || '', y);
+  y = addFormLine('E-mail', data.insured.email || '', y);
+  y = addFormLine("Date d'entrée à l'Assurance", data.insured.insurance_start_date ? formatDate(data.insured.insurance_start_date) : '', y);
+  
+  y += 5;
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(9);
+  doc.text("Déclare donner les informations ci-dessous en vue de ma souscription au contrat", 20, y);
+  
+  y += 12;
+  
+  // DECLARATION DE LA PERSONNE ASSUREE
+  y = addSectionTitle(doc, 'DECLARATION DE LA PERSONNE ASSUREE', y);
+  
+  // Situation familiale avec checkboxes
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(...COLORS.text);
+  doc.text('Situation Familiale :', 20, y);
+  
+  const drawCheckbox = (x: number, yPos: number, checked: boolean, label: string) => {
+    doc.setDrawColor(...COLORS.text);
+    doc.rect(x, yPos - 3.5, 4, 4);
+    if (checked) {
+      doc.setFillColor(...COLORS.primary);
+      doc.rect(x + 0.5, yPos - 3, 3, 3, 'F');
+    }
+    doc.setFont('helvetica', 'normal');
+    doc.text(label, x + 6, yPos);
+  };
+  
+  const maritalStatusMap: Record<string, string> = {
+    marie: 'Marié',
+    celibataire: 'Célibataire',
+    veuf: 'Veuf',
+    divorce: 'Divorcé',
+    separe: 'Séparé'
+  };
+  
+  y += 8;
+  drawCheckbox(25, y, data.insured.marital_status === 'marie', 'Marié');
+  drawCheckbox(60, y, data.insured.marital_status === 'celibataire', 'Célibataire');
+  y += 6;
+  drawCheckbox(25, y, data.insured.marital_status === 'veuf', 'Veuf');
+  drawCheckbox(60, y, data.insured.marital_status === 'divorce', 'Divorcé');
+  drawCheckbox(100, y, data.insured.marital_status === 'separe', 'Séparé');
+  
+  // 2. Conjoint section
+  if (data.spouse) {
+    y += 12;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...COLORS.primary);
+    doc.text('2. Conjoint :', 20, y);
+    y += 8;
+    
+    doc.setTextColor(...COLORS.text);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    
+    y = addFormLine('Nom', data.spouse.last_name, y);
+    y = addFormLine('Prénom', data.spouse.first_name, y);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Né le :', col1, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.spouse.birth_date ? formatDate(data.spouse.birth_date) : '________________', col1 + 20, y);
+    doc.text('à', col1 + 55, y);
+    doc.text(data.spouse.birth_place || '________________', col1 + 65, y);
+    y += lineHeight;
+    
+    y = addFormLine('Adresse', data.spouse.address || '', y);
+    y = addFormLine('Entrée du service de contractant le', data.spouse.service_entry_date || '', y);
+    y = addFormLine('Emploi', data.spouse.job_title || '', y);
+    y = addFormLine('Lieu de Travail', data.spouse.work_location || '', y);
+    y = addFormLine("Date d'entrée à l'Assurance", data.spouse.insurance_start_date || '', y);
+  }
+  
+  // Add footer on page 1
+  addFooter(doc);
+  
+  // ===== PAGE 2 - Membres de famille =====
+  doc.addPage();
+  y = 20;
+  
+  // Section title
+  y = addSectionTitle(doc, '3. Membres de la famille pris en charge', y);
+  
+  if (data.family_members && data.family_members.length > 0) {
+    const relationLabels: Record<string, string> = {
+      conjoint: 'Conjoint(e)',
+      enfant: 'Enfant',
+      parent: 'Parent',
+      autre: 'Autre',
+    };
+    
+    const familyData = data.family_members.map((member) => {
+      const age = member.birth_date ? Math.floor((new Date().getTime() - new Date(member.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : '';
+      return [
+        member.last_name,
+        member.first_name,
+        member.birth_date ? formatDate(member.birth_date) : '',
+        relationLabels[member.relationship] || member.relationship,
+        age.toString(),
+        member.gender === 'M' ? 'Masculin' : 'Féminin',
+      ];
+    });
+    
+    autoTable(doc, {
+      startY: y,
+      head: [['Nom', 'Prénom', 'Né le', 'Parenté', 'Âge', 'Sexe']],
+      body: familyData,
+      theme: 'grid',
+      headStyles: {
+        fillColor: COLORS.primary,
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 9,
+      },
+      styles: {
+        fontSize: 9,
+        cellPadding: 4,
+      },
+      margin: { left: 15, right: 15 },
+    });
+    
+    y = getLastTableY(doc) + 15;
+  }
+  
+  addFooter(doc);
+  
+  // ===== PAGE 3 - Déclarations de santé =====
+  doc.addPage();
+  y = 20;
+  
+  y = addSectionTitle(doc, 'QUESTIONNAIRE DE SANTE', y);
+  
+  // Health questions table
+  const healthQuestions = [
+    'Taille :',
+    'Poids :',
+    'Tension Artérielle :',
+    'Êtes-vous actuellement en bonne santé ?',
+    'Avez-vous un défaut de constitution, une infirmité ou une maladie chronique ?',
+    'Si oui, préciser la nature',
+    "Avez-vous dans le passé été atteint d'affection pulmonaire, nerveuse, cardiaque, rénale, d'albumine, de diabète, de maladie de foi, de cancer ?",
+    "Si oui, préciser à quel âge et donner des détails.",
+    "Préciser les maladies antérieures et l'époque à laquelle vous les avez contractées.",
+    "Pour les Femmes : Souffrez-vous ou avez-vous souffert de maladie liée à votre état de femme ?",
+    "Vos couches sont-elles normales ?",
+    "Avez-vous des cas particuliers autres à signaler que ceux-ci-dessus ?",
+  ];
+  
+  // Prepare columns: Questions + family members
+  const headers: string[] = ['Questions', 'Assuré'];
+  if (data.spouse) headers.push('Conjoint');
+  data.family_members.slice(0, 4).forEach((_, i) => headers.push(`${i + 1}er enfant`));
+  
+  const healthRows = healthQuestions.map(q => {
+    const row: string[] = [q];
+    // Add empty cells for each person
+    for (let i = 1; i < headers.length; i++) {
+      row.push('');
+    }
+    return row;
+  });
+  
+  autoTable(doc, {
+    startY: y,
+    head: [headers],
+    body: healthRows,
+    theme: 'grid',
+    headStyles: {
+      fillColor: COLORS.primary,
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8,
+    },
+    styles: {
+      fontSize: 8,
+      cellPadding: 3,
+      minCellHeight: 8,
+    },
+    columnStyles: {
+      0: { cellWidth: 70 },
+    },
+    margin: { left: 10, right: 10 },
+  });
+  
+  y = getLastTableY(doc) + 10;
+  
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.text);
+  doc.text("Tout trait tiré en travers d'une case ne constitue pas une réponse !", 20, y);
+  
+  addFooter(doc);
+  
+  // ===== PAGE 4 - Engagement et signature =====
+  doc.addPage();
+  y = 20;
+  
+  y = addSectionTitle(doc, 'ENGAGEMENT', y);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(...COLORS.text);
+  
+  const engagementText = "Je soussigné, déclare que toutes les réponses ci-dessus sont exactes et sincères. Je certifie avoir signalé toutes les maladies et infirmités actuelles ou antérieures dont j'ai pu avoir connaissance, pour moi-même et ma famille. J'accepte que le présent document serve de base aux garanties du contrat.";
+  const splitEngagement = doc.splitTextToSize(engagementText, pageWidth - 40);
+  doc.text(splitEngagement, 20, y);
+  y += splitEngagement.length * 5 + 5;
+  
+  const warningText = "Je note que toute fausse déclaration intentionnelle, toute réticence entraîne la nullité du contrat conformément à l'article 18 du code des Assurances, les primes échues restant acquises à la compagnie.";
+  const splitWarning = doc.splitTextToSize(warningText, pageWidth - 40);
+  doc.text(splitWarning, 20, y);
+  y += splitWarning.length * 5 + 15;
+  
+  // Signature section
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Fait à ${data.signature_location || 'Moroni'} le ${data.signature_date ? formatDate(data.signature_date) : '........................'}`, 20, y);
+  
+  y += 15;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Signature de l\'assuré', 20, y);
+  
+  // Signature box for insured
+  doc.setDrawColor(...COLORS.mediumGray);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(20, y + 5, 70, 35, 3, 3, 'S');
+  
+  y += 55;
+  
+  // Section réservée à l'assureur
+  y = addSectionTitle(doc, 'PARTIE RESERVEE A L\'ASSUREUR ET A SON MEDECIN CONSEIL', y);
+  
+  autoTable(doc, {
+    startY: y,
+    head: [['Acceptation simple', 'Réserves / exclusions']],
+    body: [['', '']],
+    theme: 'grid',
+    headStyles: {
+      fillColor: COLORS.secondary,
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+    },
+    styles: {
+      fontSize: 10,
+      cellPadding: 15,
+      minCellHeight: 40,
+    },
+    margin: { left: 20, right: 20 },
+  });
+  
+  y = getLastTableY(doc) + 15;
+  
+  // Cachet assureur
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('Signature et cachet MAC ASSURANCES', pageWidth - 90, y);
+  doc.setDrawColor(...COLORS.mediumGray);
+  doc.roundedRect(pageWidth - 90, y + 5, 70, 35, 3, 3, 'S');
+  
+  addFooter(doc);
+  
+  doc.save(`Fiche_Souscription_${data.contract_number}.pdf`);
 };
