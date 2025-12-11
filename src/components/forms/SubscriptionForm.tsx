@@ -12,9 +12,10 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from '@/hooks/use-toast';
-import { User, Users, Heart, FileText, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { User, Users, Heart, FileText, Loader2, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { generateFicheSubscriptionPDF, FicheSubscriptionPDFData } from '@/lib/pdfGenerator';
 
 interface SubscriptionFormProps {
   onClose: () => void;
@@ -24,8 +25,16 @@ interface FamilyMember {
   first_name: string;
   last_name: string;
   birth_date: string;
+  birth_place: string;
   relationship: 'enfant' | 'parent' | 'autre' | 'conjoint';
   gender: 'M' | 'F';
+  age: string;
+}
+
+interface HealthInfo {
+  taille: string;
+  poids: string;
+  tension: string;
 }
 
 export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
@@ -64,16 +73,25 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
 
   // Family members
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([
-    { first_name: '', last_name: '', birth_date: '', relationship: 'enfant', gender: 'M' },
+    { first_name: '', last_name: '', birth_date: '', birth_place: '', relationship: 'enfant', gender: 'M', age: '' },
   ]);
+
+  // Health info for main insured
+  const [healthInfo, setHealthInfo] = useState<HealthInfo>({
+    taille: '',
+    poids: '',
+    tension: '',
+  });
 
   // Health declarations
   const [healthDeclarations, setHealthDeclarations] = useState<{ question: string; answer: boolean; details: string }[]>([
-    { question: 'Êtes-vous actuellement sous traitement médical ?', answer: false, details: '' },
-    { question: 'Avez-vous été hospitalisé au cours des 5 dernières années ?', answer: false, details: '' },
-    { question: 'Souffrez-vous de maladies chroniques (diabète, hypertension, etc.) ?', answer: false, details: '' },
-    { question: 'Avez-vous subi des interventions chirurgicales ?', answer: false, details: '' },
-    { question: 'Êtes-vous enceinte actuellement ?', answer: false, details: '' },
+    { question: 'Êtes-vous actuellement en bonne santé ?', answer: false, details: '' },
+    { question: 'Avez-vous un défaut de constitution, une infirmité ou une maladie chronique ?', answer: false, details: '' },
+    { question: "Avez-vous dans le passé été atteint d'affection pulmonaire, nerveuse, cardiaque, rénale, d'albumine, de diabète, de maladie de foi, de cancer ?", answer: false, details: '' },
+    { question: "Préciser les maladies antérieures et l'époque à laquelle vous les avez contractées.", answer: false, details: '' },
+    { question: "Pour les Femmes : Souffrez-vous ou avez-vous souffert de maladie liée à votre état de femme ?", answer: false, details: '' },
+    { question: 'Vos couches sont-elles normales ?', answer: false, details: '' },
+    { question: 'Avez-vous des cas particuliers autres à signaler ?', answer: false, details: '' },
   ]);
 
   const [engagement, setEngagement] = useState(false);
@@ -85,7 +103,7 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
   };
 
   const addFamilyMember = () => {
-    setFamilyMembers([...familyMembers, { first_name: '', last_name: '', birth_date: '', relationship: 'enfant', gender: 'M' }]);
+    setFamilyMembers([...familyMembers, { first_name: '', last_name: '', birth_date: '', birth_place: '', relationship: 'enfant', gender: 'M', age: '' }]);
   };
 
   const updateFamilyMember = (index: number, field: keyof FamilyMember, value: string) => {
@@ -102,31 +120,19 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
     e.preventDefault();
     
     if (!clientCode || !contractNumber || !raisonSociale) {
-      toast({
-        title: 'Erreur',
-        description: 'Veuillez remplir les informations du contractant',
-        variant: 'destructive',
-      });
+      toast.error("Veuillez remplir les informations du contractant");
       setCurrentTab('contractant');
       return;
     }
 
     if (!lastName || !firstName || !birthDate) {
-      toast({
-        title: 'Erreur',
-        description: 'Veuillez remplir les informations de l\'assuré principal',
-        variant: 'destructive',
-      });
+      toast.error("Veuillez remplir les informations de l'assuré principal");
       setCurrentTab('assure');
       return;
     }
 
     if (!engagement) {
-      toast({
-        title: 'Erreur',
-        description: 'Veuillez accepter l\'engagement',
-        variant: 'destructive',
-      });
+      toast.error("Veuillez accepter l'engagement");
       setCurrentTab('sante');
       return;
     }
@@ -232,22 +238,59 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
         if (declarationsError) console.error('Error creating health declarations:', declarationsError);
       }
 
-      toast({
-        title: 'Souscription créée',
-        description: `Matricule: ${matricule} - La demande de souscription a été enregistrée avec succès.`,
-      });
+      toast.success(`Souscription créée - Matricule: ${matricule}`);
 
       onClose();
     } catch (error: any) {
       console.error('Error creating subscription:', error);
-      toast({
-        title: 'Erreur',
-        description: error.message || 'Une erreur est survenue lors de la création',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Une erreur est survenue lors de la création');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Générer la fiche de souscription PDF
+  const handleGeneratePDF = () => {
+    const pdfData: FicheSubscriptionPDFData = {
+      client_code: clientCode,
+      contract_number: contractNumber,
+      raison_sociale: raisonSociale,
+      address: contractAddress,
+      insured: {
+        last_name: lastName,
+        first_name: firstName,
+        maiden_name: maidenName,
+        birth_date: birthDate,
+        birth_place: birthPlace,
+        address: address,
+        job_title: jobTitle,
+        work_location: workLocation,
+        phone: phone,
+        email: email,
+        insurance_start_date: insuranceStartDate,
+        marital_status: maritalStatus,
+        gender: gender,
+      },
+      spouse: maritalStatus === 'marie' && spouseFirstName ? {
+        last_name: spouseLastName,
+        first_name: spouseFirstName,
+        birth_date: spouseBirthDate,
+        birth_place: spouseBirthPlace,
+      } : undefined,
+      family_members: familyMembers.filter(m => m.first_name && m.last_name).map(m => ({
+        last_name: m.last_name,
+        first_name: m.first_name,
+        birth_date: m.birth_date,
+        relationship: m.relationship,
+        gender: m.gender,
+      })),
+      health_declarations: [],
+      signature_location: 'Moroni',
+      signature_date: new Date().toISOString(),
+    };
+    
+    generateFicheSubscriptionPDF(pdfData);
+    toast.success('Fiche de souscription générée avec succès');
   };
 
   return (
@@ -656,20 +699,31 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
         </TabsContent>
       </Tabs>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-border">
-        <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
-          Annuler
+      <div className="flex justify-between gap-3 pt-4 border-t border-border">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={handleGeneratePDF}
+          className="gap-2"
+        >
+          <Download className="w-4 h-4" />
+          Télécharger la fiche
         </Button>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Enregistrement...
-            </>
-          ) : (
-            'Enregistrer la souscription'
-          )}
-        </Button>
+        <div className="flex gap-3">
+          <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
+            Annuler
+          </Button>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Enregistrement...
+              </>
+            ) : (
+              'Enregistrer la souscription'
+            )}
+          </Button>
+        </div>
       </div>
     </form>
   );
