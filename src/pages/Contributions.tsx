@@ -84,7 +84,8 @@ export default function Contributions() {
         selectedContribution.id,
         status,
         paidAmount,
-        paymentData.payment_reference
+        paymentData.payment_reference,
+        selectedContribution.contract_id
       );
 
       toast({

@@ -118,7 +118,8 @@ export function useContributionsData(searchTerm: string = '', statusFilter: stri
     id: string,
     status: string,
     paidAmount: number,
-    paymentReference?: string
+    paymentReference?: string,
+    contractId?: string
   ) => {
     const updateData: any = {
       payment_status: status,
@@ -139,6 +140,20 @@ export function useContributionsData(searchTerm: string = '', statusFilter: stri
       .eq('id', id);
 
     if (error) throw error;
+
+    // Si le paiement est complet, mettre à jour le statut du contrat et des assurés à "validee"
+    if (status === 'paye' && contractId) {
+      await supabase
+        .from('contracts')
+        .update({ status: 'validee' })
+        .eq('id', contractId);
+
+      await supabase
+        .from('insured')
+        .update({ status: 'validee' })
+        .eq('contract_id', contractId);
+    }
+
     fetchData();
   };
 
