@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Download, Eye, Edit, MoreHorizontal, Phone, Mail, MapPin, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Download, Eye, Edit, MoreHorizontal, Phone, Mail, MapPin, CheckCircle, XCircle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -84,6 +84,19 @@ export default function Insured() {
             <Download className="w-4 h-4" />
             Export PDF
           </Button>
+        </div>
+      </div>
+
+      {/* Info Alert */}
+      <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+        <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+        <div>
+          <p className="font-medium text-blue-800 dark:text-blue-200">
+            Gestion des ayants droit
+          </p>
+          <p className="text-sm text-blue-700 dark:text-blue-300">
+            Seuls les assurés ayant le badge <span className="inline-flex items-center gap-1 font-medium text-green-600 bg-green-100 dark:bg-green-900/30 px-1.5 py-0.5 rounded text-xs"><CheckCircle className="w-3 h-3" />Cotisation payée</span> peuvent avoir des ayants droit. Les assurés avec une cotisation impayée ne peuvent pas être sélectionnés lors de l'ajout d'un ayant droit.
+          </p>
         </div>
       </div>
 
