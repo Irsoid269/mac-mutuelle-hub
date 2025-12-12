@@ -8,18 +8,20 @@ const getLastTableY = (doc: jsPDF): number => {
   return (doc as any).lastAutoTable?.finalY || 0;
 };
 
-// MAC ASSURANCES Logo as base64 (simplified version for PDF)
-const MAC_LOGO_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAABkCAYAAADDhn8LAAAACXBIWXMAAAsTAAALEwEAmpwYAAAFzklEQVR4nO2dW3LbMAwApXT3v3N7gnZy/7vpCdqeoJ2coJ2coE5O0E5O0E5O0MkJmskJOl0vdhIllCXZJgFSst8XzIwtSgQIgKQoy/Lq6uqKEEIIIYQQQgghhBBCCCGEEEIIIYQQQgghhBBCCCGEEEIIIYQQQgghhBBCCCGEkGOj+nv78w+ybQMhhJyY7RsIIeRkbN5ACCEnYvMGQgg5AZs3EELIEdn8/INsX0MIIUdi8wZCCDkCmzcQQsiR2LyBEEKOwOYNhBByBDZvIISQI7B5AyGEHIHNGwgh5EhsCIZNTU7J5g2EEHIENTO2QITQwgHUe4MIoYUDqPcGEUILB1DvDSKEFg6g3htECC0cQL03iBBaOIB6bxAhtHAA9d4gQmjhAOq9QYTQwgHUe4MIoYUDqPcGEUILB1DvDSKEFg6g3htECC0cQL03iBBaOIB6bxAhtHAA9d4gQmjhAOq9QYTQwgHUe4MIoYUDqPcGEUILB1DvDSKEFg6g3htECC0cQL03iBBaOIB6bxAhtHAA9d4gQmjhAOq9QYTQwgHUe4MIoYUDqPcGEUILB1DvDSKEFg6g3htECC0cQL03iBBaOIB6bxAhtHAA9d4gQmjhAOq9QYTQwgHUe4MIoYUDqPcGEUILB1DvDSKEFg6g3htECC0cQP/9f28IIeRIbN5ACCFHYPMGQgg5Aps3EELIEdi8gRBCjsDmDYQQcgQ2byCEkCOweQMhhByBzRsIIeQIbN5ACCFHYPMGQgg5Aps3EELIEdi8gRBCjsDmDYQQcgQ2byCEkCOweQMhhByJzRsIIeRIbN5ACCFHYvMGQgg5Eps3EELIkdi8gRBCjsTmDYQQciQ2byCEkCOxeQMhhByJzRsIIeRIbN5ACCFH4uoN//77/xchDJAQwEJRCGEkFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQxkJRCGEsFIUQQgghhBBCCCGEEEIIIYQQQgghhBBCCCGEEEIIIYQQQgghhBBCCCGEEEIIIcTxP+QHRJ2sTp0fAAAAAElFTkSuQmCC';
-
-// Brand colors as tuples for TypeScript
+// MAC ASSURANCES Brand colors (from logo: Blue #1A9BD7, Yellow #FFE500, Gray #8C8C8C)
 const COLORS = {
-  primary: [0, 102, 153] as [number, number, number],
-  secondary: [0, 51, 102] as [number, number, number],
-  accent: [255, 153, 0] as [number, number, number],
+  primary: [26, 155, 215] as [number, number, number],      // MAC Blue
+  primaryDark: [20, 120, 170] as [number, number, number],  // Darker blue for contrast
+  secondary: [140, 140, 140] as [number, number, number],   // MAC Gray
+  accent: [255, 229, 0] as [number, number, number],        // MAC Yellow
   text: [51, 51, 51] as [number, number, number],
-  lightGray: [245, 245, 245] as [number, number, number],
-  mediumGray: [200, 200, 200] as [number, number, number],
+  textLight: [100, 100, 100] as [number, number, number],
+  lightGray: [248, 250, 252] as [number, number, number],
+  mediumGray: [229, 231, 235] as [number, number, number],
   white: [255, 255, 255] as [number, number, number],
+  success: [34, 197, 94] as [number, number, number],
+  warning: [245, 158, 11] as [number, number, number],
+  error: [239, 68, 68] as [number, number, number],
 };
 
 // Format currency
@@ -35,74 +37,141 @@ const formatDate = (date: string | Date): string => {
   return format(new Date(date), 'dd/MM/yyyy', { locale: fr });
 };
 
-// Add header with logo
-const addHeader = (doc: jsPDF, title: string): number => {
+// Professional header with logo
+const addHeader = (doc: jsPDF, title: string, subtitle?: string): number => {
   const pageWidth = doc.internal.pageSize.getWidth();
   
-  // Background gradient effect
-  doc.setFillColor(...COLORS.primary);
-  doc.rect(0, 0, pageWidth, 45, 'F');
-  
-  // Accent line
+  // Top accent bar (yellow)
   doc.setFillColor(...COLORS.accent);
-  doc.rect(0, 45, pageWidth, 3, 'F');
+  doc.rect(0, 0, pageWidth, 4, 'F');
   
-  // Company name (instead of logo for reliability)
+  // Main header background (white with subtle blue gradient effect)
+  doc.setFillColor(...COLORS.white);
+  doc.rect(0, 4, pageWidth, 38, 'F');
+  
+  // Bottom border (blue)
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(0, 42, pageWidth, 2, 'F');
+  
+  // Company name styled like logo
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(24);
-  doc.setTextColor(255, 255, 255);
-  doc.text('MAC ASSURANCES', 15, 25);
+  doc.setFontSize(26);
+  doc.setTextColor(...COLORS.primary);
+  doc.text('MAC', 15, 24);
+  
+  doc.setFontSize(14);
+  doc.setTextColor(...COLORS.secondary);
+  doc.text('ASSURANCES', 48, 24);
   
   // Tagline
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text('Mutuelle d\'Assurance des Comores', 15, 35);
-  
-  // Document title
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text(title, pageWidth - 15, 25, { align: 'right' });
-  
-  // Date
-  doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text(`Édité le: ${formatDate(new Date())}`, pageWidth - 15, 35, { align: 'right' });
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('Mutuelle d\'Assurance des Comores', 15, 32);
+  doc.text('Le contrat de confiance', 15, 38);
   
-  return 55;
-};
-
-// Add footer
-const addFooter = (doc: jsPDF): void => {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  
-  // Footer line
-  doc.setDrawColor(...COLORS.primary);
-  doc.setLineWidth(0.5);
-  doc.line(15, pageHeight - 25, pageWidth - 15, pageHeight - 25);
-  
-  // Footer text
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(...COLORS.text);
-  doc.text('MAC ASSURANCES - Mutuelle d\'Assurance des Comores', 15, pageHeight - 18);
-  doc.text('Moroni, Union des Comores | Tél: +269 773 00 00 | Email: contact@mac-assurances.km', 15, pageHeight - 12);
-  
-  // Page number
-  doc.text(`Page ${doc.getCurrentPageInfo().pageNumber}`, pageWidth - 15, pageHeight - 15, { align: 'right' });
-};
-
-// Add section title
-const addSectionTitle = (doc: jsPDF, title: string, y: number): number => {
+  // Document title box on the right
+  const titleBoxWidth = 80;
+  const titleBoxX = pageWidth - titleBoxWidth - 10;
   doc.setFillColor(...COLORS.lightGray);
-  doc.roundedRect(15, y, doc.internal.pageSize.getWidth() - 30, 10, 2, 2, 'F');
+  doc.roundedRect(titleBoxX, 8, titleBoxWidth, 30, 3, 3, 'F');
   
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(...COLORS.primary);
-  doc.text(title, 20, y + 7);
+  doc.text(title, titleBoxX + titleBoxWidth / 2, 18, { align: 'center' });
   
-  return y + 15;
+  if (subtitle) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...COLORS.text);
+    doc.text(subtitle, titleBoxX + titleBoxWidth / 2, 26, { align: 'center' });
+  }
+  
+  // Date
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text(`Édité le: ${formatDate(new Date())}`, titleBoxX + titleBoxWidth / 2, 34, { align: 'center' });
+  
+  return 52;
+};
+
+// Professional footer
+const addFooter = (doc: jsPDF): void => {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  
+  // Footer background
+  doc.setFillColor(...COLORS.lightGray);
+  doc.rect(0, pageHeight - 28, pageWidth, 28, 'F');
+  
+  // Top accent line
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(0, pageHeight - 28, pageWidth, 1, 'F');
+  
+  // Company info
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.primary);
+  doc.text('MAC ASSURANCES', 15, pageHeight - 20);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('Mutuelle d\'Assurance des Comores', 15, pageHeight - 14);
+  doc.text('Avenue de Strasbourg, Moroni-Bacha, Union des Comores', 15, pageHeight - 9);
+  
+  // Contact info (center)
+  doc.setTextColor(...COLORS.text);
+  doc.text('Tél: +269 773 00 00', pageWidth / 2, pageHeight - 14, { align: 'center' });
+  doc.text('Email: mac.assurances@gmail.com', pageWidth / 2, pageHeight - 9, { align: 'center' });
+  
+  // Website and page number (right)
+  doc.setTextColor(...COLORS.primary);
+  doc.text('www.macassurances.com', pageWidth - 15, pageHeight - 14, { align: 'right' });
+  
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.text);
+  doc.text(`Page ${doc.getCurrentPageInfo().pageNumber}`, pageWidth - 15, pageHeight - 8, { align: 'right' });
+  
+  // Yellow accent at very bottom
+  doc.setFillColor(...COLORS.accent);
+  doc.rect(0, pageHeight - 3, pageWidth, 3, 'F');
+};
+
+// Professional section title
+const addSectionTitle = (doc: jsPDF, title: string, y: number): number => {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  
+  // Left accent bar
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(15, y, 4, 12, 'F');
+  
+  // Background
+  doc.setFillColor(...COLORS.lightGray);
+  doc.rect(19, y, pageWidth - 34, 12, 'F');
+  
+  // Title text
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...COLORS.primary);
+  doc.text(title.toUpperCase(), 24, y + 8);
+  
+  return y + 18;
+};
+
+// Add info row helper
+const addInfoRow = (doc: jsPDF, label: string, value: string, x: number, y: number, labelWidth: number = 45): void => {
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text(label + ' :', x, y);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...COLORS.text);
+  doc.text(value || '—', x + labelWidth, y);
 };
 
 // Generate reimbursement PDF
@@ -134,56 +203,36 @@ export const generateReimbursementPDF = (data: ReimbursementPDFData): void => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   
-  let y = addHeader(doc, 'FICHE DE REMBOURSEMENT');
+  let y = addHeader(doc, 'FICHE DE', 'REMBOURSEMENT');
   
-  // Reference number box
-  doc.setFillColor(...COLORS.lightGray);
-  doc.roundedRect(pageWidth - 80, y, 65, 20, 3, 3, 'F');
+  // Reference number box with accent
+  doc.setFillColor(...COLORS.primary);
+  doc.roundedRect(pageWidth - 85, y, 70, 22, 3, 3, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text('N° Dossier', pageWidth - 50, y + 8, { align: 'center' });
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.setTextColor(...COLORS.primary);
-  doc.text('N° Dossier:', pageWidth - 75, y + 8);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(...COLORS.text);
-  doc.text(data.reimbursement_number, pageWidth - 75, y + 16);
+  doc.setFontSize(12);
+  doc.text(data.reimbursement_number, pageWidth - 50, y + 17, { align: 'center' });
   
-  y += 30;
+  y += 32;
   
   // Insured information section
-  y = addSectionTitle(doc, 'INFORMATIONS DE L\'ASSURÉ', y);
-  
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(...COLORS.text);
+  y = addSectionTitle(doc, 'Informations de l\'assuré', y);
   
   const col1 = 20;
-  const col2 = 110;
+  const col2 = 115;
   
-  doc.setFont('helvetica', 'bold');
-  doc.text('Nom complet:', col1, y);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${data.insured.first_name} ${data.insured.last_name}`, col1 + 35, y);
-  
-  doc.setFont('helvetica', 'bold');
-  doc.text('Matricule:', col2, y);
-  doc.setFont('helvetica', 'normal');
-  doc.text(data.insured.matricule, col2 + 30, y);
+  addInfoRow(doc, 'Nom complet', `${data.insured.first_name} ${data.insured.last_name}`, col1, y, 35);
+  addInfoRow(doc, 'Matricule', data.insured.matricule, col2, y, 30);
   
   y += 15;
   
   // Provider information section
-  y = addSectionTitle(doc, 'PRESTATAIRE DE SOINS', y);
+  y = addSectionTitle(doc, 'Prestataire de soins', y);
   
   if (data.provider) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Établissement:', col1, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(data.provider.name, col1 + 35, y);
-    
-    doc.setFont('helvetica', 'bold');
-    doc.text('Type:', col2, y);
-    doc.setFont('helvetica', 'normal');
     const providerTypeLabels: Record<string, string> = {
       hopital: 'Hôpital',
       clinique: 'Clinique',
@@ -192,23 +241,38 @@ export const generateReimbursementPDF = (data: ReimbursementPDFData): void => {
       medecin: 'Médecin',
       autre: 'Autre',
     };
-    doc.text(providerTypeLabels[data.provider.provider_type] || data.provider.provider_type, col2 + 20, y);
+    
+    addInfoRow(doc, 'Établissement', data.provider.name, col1, y, 35);
+    addInfoRow(doc, 'Type', providerTypeLabels[data.provider.provider_type] || data.provider.provider_type, col2, y, 20);
     
     y += 8;
     
+    // Conventioned badge
     doc.setFont('helvetica', 'bold');
-    doc.text('Conventionné:', col1, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(data.provider.is_conventioned ? 'Oui' : 'Non', col1 + 35, y);
+    doc.setFontSize(9);
+    doc.setTextColor(...COLORS.textLight);
+    doc.text('Conventionné :', col1, y);
+    
+    if (data.provider.is_conventioned) {
+      doc.setFillColor(...COLORS.success);
+    } else {
+      doc.setFillColor(...COLORS.error);
+    }
+    doc.roundedRect(col1 + 38, y - 4, 20, 6, 2, 2, 'F');
+    doc.setFontSize(7);
+    doc.setTextColor(255, 255, 255);
+    doc.text(data.provider.is_conventioned ? 'Oui' : 'Non', col1 + 48, y, { align: 'center' });
   } else {
     doc.setFont('helvetica', 'italic');
+    doc.setFontSize(9);
+    doc.setTextColor(...COLORS.textLight);
     doc.text('Non spécifié', col1, y);
   }
   
   y += 15;
   
   // Care details section
-  y = addSectionTitle(doc, 'DÉTAILS DES SOINS', y);
+  y = addSectionTitle(doc, 'Détails des soins', y);
   
   const careTypeLabels: Record<string, string> = {
     consultation: 'Consultation',
@@ -219,22 +283,15 @@ export const generateReimbursementPDF = (data: ReimbursementPDFData): void => {
     autre: 'Autre',
   };
   
-  doc.setFont('helvetica', 'bold');
-  doc.text('Type de soin:', col1, y);
-  doc.setFont('helvetica', 'normal');
-  doc.text(careTypeLabels[data.care_type] || data.care_type, col1 + 35, y);
-  
-  doc.setFont('helvetica', 'bold');
-  doc.text('Date des soins:', col2, y);
-  doc.setFont('helvetica', 'normal');
-  doc.text(formatDate(data.medical_date), col2 + 35, y);
+  addInfoRow(doc, 'Type de soin', careTypeLabels[data.care_type] || data.care_type, col1, y, 35);
+  addInfoRow(doc, 'Date des soins', formatDate(data.medical_date), col2, y, 35);
   
   y += 15;
   
   // Financial section
-  y = addSectionTitle(doc, 'INFORMATIONS FINANCIÈRES', y);
+  y = addSectionTitle(doc, 'Informations financières', y);
   
-  // Financial table
+  // Financial table with improved styling
   autoTable(doc, {
     startY: y,
     head: [['Description', 'Montant']],
@@ -243,18 +300,26 @@ export const generateReimbursementPDF = (data: ReimbursementPDFData): void => {
       ['Montant approuvé', data.approved_amount ? formatCurrency(data.approved_amount) : 'En attente'],
       ['Montant payé', data.paid_amount ? formatCurrency(data.paid_amount) : 'En attente'],
     ],
-    theme: 'grid',
+    theme: 'plain',
     headStyles: {
       fillColor: COLORS.primary,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
+      fontSize: 10,
+    },
+    bodyStyles: {
+      fontSize: 10,
+    },
+    alternateRowStyles: {
+      fillColor: COLORS.lightGray,
     },
     styles: {
-      fontSize: 10,
-      cellPadding: 5,
+      cellPadding: 6,
+      lineColor: COLORS.mediumGray,
+      lineWidth: 0.1,
     },
     columnStyles: {
-      0: { cellWidth: 100 },
+      0: { cellWidth: 100, fontStyle: 'normal' },
       1: { cellWidth: 60, halign: 'right', fontStyle: 'bold' },
     },
     margin: { left: 20, right: 20 },
@@ -263,7 +328,7 @@ export const generateReimbursementPDF = (data: ReimbursementPDFData): void => {
   y = getLastTableY(doc) + 15;
   
   // Status section
-  y = addSectionTitle(doc, 'STATUT DU DOSSIER', y);
+  y = addSectionTitle(doc, 'Statut du dossier', y);
   
   const statusLabels: Record<string, string> = {
     soumis: 'Soumis',
@@ -274,39 +339,45 @@ export const generateReimbursementPDF = (data: ReimbursementPDFData): void => {
   };
   
   const statusColors: Record<string, [number, number, number]> = {
-    soumis: [255, 193, 7],
-    verification: [33, 150, 243],
-    valide: [76, 175, 80],
-    paye: [0, 102, 153],
-    rejete: [244, 67, 54],
+    soumis: COLORS.warning,
+    verification: COLORS.primary,
+    valide: COLORS.success,
+    paye: [26, 155, 215],
+    rejete: COLORS.error,
   };
   
-  const statusColor = statusColors[data.status] || [128, 128, 128] as [number, number, number];
+  const statusColor = statusColors[data.status] || COLORS.secondary;
+  
+  // Status badge
   doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-  doc.roundedRect(20, y, 50, 10, 2, 2, 'F');
+  doc.roundedRect(20, y, 55, 12, 3, 3, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(255, 255, 255);
-  doc.text(statusLabels[data.status] || data.status, 25, y + 7);
+  doc.text(statusLabels[data.status] || data.status, 47.5, y + 8, { align: 'center' });
   
-  y += 15;
-  doc.setTextColor(...COLORS.text);
+  y += 18;
+  
+  // Dates info
   doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.text);
   
-  doc.text(`Date de soumission: ${formatDate(data.created_at)}`, col1, y);
+  addInfoRow(doc, 'Date de soumission', formatDate(data.created_at), col1, y, 45);
   if (data.validated_at) {
-    doc.text(`Date de validation: ${formatDate(data.validated_at)}`, col2, y);
+    addInfoRow(doc, 'Date de validation', formatDate(data.validated_at), col2, y, 40);
   }
   y += 8;
   if (data.paid_at) {
-    doc.text(`Date de paiement: ${formatDate(data.paid_at)}`, col1, y);
+    addInfoRow(doc, 'Date de paiement', formatDate(data.paid_at), col1, y, 45);
   }
   
   if (data.notes) {
     y += 15;
-    y = addSectionTitle(doc, 'OBSERVATIONS', y);
+    y = addSectionTitle(doc, 'Observations', y);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
+    doc.setFontSize(9);
+    doc.setTextColor(...COLORS.text);
     const splitNotes = doc.splitTextToSize(data.notes, pageWidth - 40);
     doc.text(splitNotes, 20, y);
   }
@@ -352,71 +423,49 @@ export const generateSubscriptionPDF = (data: SubscriptionPDFData): void => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   
-  let y = addHeader(doc, 'ATTESTATION DE SOUSCRIPTION');
+  let y = addHeader(doc, 'ATTESTATION', 'DE SOUSCRIPTION');
   
-  // Contract number box
-  doc.setFillColor(...COLORS.lightGray);
-  doc.roundedRect(pageWidth - 80, y, 65, 20, 3, 3, 'F');
+  // Contract number box with accent
+  doc.setFillColor(...COLORS.primary);
+  doc.roundedRect(pageWidth - 85, y, 70, 22, 3, 3, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text('N° Contrat', pageWidth - 50, y + 8, { align: 'center' });
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.setTextColor(...COLORS.primary);
-  doc.text('N° Contrat:', pageWidth - 75, y + 8);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(...COLORS.text);
-  doc.text(data.contract_number, pageWidth - 75, y + 16);
+  doc.text(data.contract_number, pageWidth - 50, y + 17, { align: 'center' });
   
-  y += 30;
+  y += 32;
   
   // Client information
-  y = addSectionTitle(doc, 'INFORMATIONS DU SOUSCRIPTEUR', y);
+  y = addSectionTitle(doc, 'Informations du souscripteur', y);
   
   const col1 = 20;
-  const col2 = 110;
+  const col2 = 115;
   
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(...COLORS.text);
-  
-  doc.setFont('helvetica', 'bold');
-  doc.text('Raison sociale:', col1, y);
-  doc.setFont('helvetica', 'normal');
-  doc.text(data.raison_sociale, col1 + 35, y);
-  
-  doc.setFont('helvetica', 'bold');
-  doc.text('Code client:', col2, y);
-  doc.setFont('helvetica', 'normal');
-  doc.text(data.client_code, col2 + 30, y);
+  addInfoRow(doc, 'Raison sociale', data.raison_sociale, col1, y, 38);
+  addInfoRow(doc, 'Code client', data.client_code, col2, y, 30);
   
   y += 8;
   
   if (data.address) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Adresse:', col1, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(data.address, col1 + 25, y);
+    addInfoRow(doc, 'Adresse', data.address, col1, y, 25);
     y += 8;
   }
   
   if (data.phone || data.email) {
     if (data.phone) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Téléphone:', col1, y);
-      doc.setFont('helvetica', 'normal');
-      doc.text(data.phone, col1 + 28, y);
+      addInfoRow(doc, 'Téléphone', data.phone, col1, y, 30);
     }
     if (data.email) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Email:', col2, y);
-      doc.setFont('helvetica', 'normal');
-      doc.text(data.email, col2 + 18, y);
+      addInfoRow(doc, 'Email', data.email, col2, y, 18);
     }
     y += 8;
   }
   
-  y += 10;
-  
-  // Contract status
+  // Status and date
+  y += 5;
   const statusLabels: Record<string, string> = {
     en_attente: 'En attente',
     validee: 'Validée',
@@ -425,33 +474,31 @@ export const generateSubscriptionPDF = (data: SubscriptionPDFData): void => {
   };
   
   const statusColors: Record<string, [number, number, number]> = {
-    en_attente: [255, 193, 7],
-    validee: [76, 175, 80],
-    rejetee: [244, 67, 54],
+    en_attente: COLORS.warning,
+    validee: COLORS.success,
+    rejetee: COLORS.error,
     reserve_medicale: [255, 152, 0],
   };
   
   doc.setFont('helvetica', 'bold');
-  doc.text('Statut:', col1, y);
-  const contractStatusColor = statusColors[data.status] || [128, 128, 128] as [number, number, number];
-  doc.setFillColor(contractStatusColor[0], contractStatusColor[1], contractStatusColor[2]);
-  doc.roundedRect(col1 + 20, y - 5, 40, 8, 2, 2, 'F');
   doc.setFontSize(9);
-  doc.setTextColor(255, 255, 255);
-  doc.text(statusLabels[data.status] || data.status, col1 + 25, y);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('Statut :', col1, y);
   
-  doc.setTextColor(...COLORS.text);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text("Date d'effet:", col2, y);
-  doc.setFont('helvetica', 'normal');
-  doc.text(formatDate(data.start_date), col2 + 30, y);
+  const contractStatusColor = statusColors[data.status] || COLORS.secondary;
+  doc.setFillColor(contractStatusColor[0], contractStatusColor[1], contractStatusColor[2]);
+  doc.roundedRect(col1 + 22, y - 4, 40, 7, 2, 2, 'F');
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text(statusLabels[data.status] || data.status, col1 + 42, y, { align: 'center' });
+  
+  addInfoRow(doc, 'Date d\'effet', formatDate(data.start_date), col2, y, 30);
   
   y += 15;
   
   // Insured persons
   if (data.insured && data.insured.length > 0) {
-    y = addSectionTitle(doc, 'ASSURÉS', y);
+    y = addSectionTitle(doc, 'Assurés', y);
     
     const genderLabels: Record<string, string> = { M: 'Masculin', F: 'Féminin' };
     
@@ -467,25 +514,31 @@ export const generateSubscriptionPDF = (data: SubscriptionPDFData): void => {
       startY: y,
       head: [['Type', 'Nom complet', 'Matricule', 'Date naissance', 'Genre']],
       body: insuredData,
-      theme: 'grid',
+      theme: 'plain',
       headStyles: {
         fillColor: COLORS.primary,
         textColor: [255, 255, 255],
         fontStyle: 'bold',
+        fontSize: 9,
+      },
+      alternateRowStyles: {
+        fillColor: COLORS.lightGray,
       },
       styles: {
         fontSize: 9,
-        cellPadding: 4,
+        cellPadding: 5,
+        lineColor: COLORS.mediumGray,
+        lineWidth: 0.1,
       },
       margin: { left: 15, right: 15 },
     });
     
-    y = getLastTableY(doc) + 10;
+    y = getLastTableY(doc) + 12;
   }
   
   // Beneficiaries
   if (data.beneficiaries && data.beneficiaries.length > 0) {
-    y = addSectionTitle(doc, 'AYANTS DROIT', y);
+    y = addSectionTitle(doc, 'Ayants droit', y);
     
     const relationLabels: Record<string, string> = {
       conjoint: 'Conjoint(e)',
@@ -505,37 +558,45 @@ export const generateSubscriptionPDF = (data: SubscriptionPDFData): void => {
       startY: y,
       head: [['Nom complet', 'Lien de parenté', 'Date naissance', 'Genre']],
       body: beneficiaryData,
-      theme: 'grid',
+      theme: 'plain',
       headStyles: {
-        fillColor: COLORS.secondary,
+        fillColor: COLORS.primaryDark,
         textColor: [255, 255, 255],
         fontStyle: 'bold',
+        fontSize: 9,
+      },
+      alternateRowStyles: {
+        fillColor: COLORS.lightGray,
       },
       styles: {
         fontSize: 9,
-        cellPadding: 4,
+        cellPadding: 5,
+        lineColor: COLORS.mediumGray,
+        lineWidth: 0.1,
       },
       margin: { left: 15, right: 15 },
     });
     
-    y = getLastTableY(doc) + 10;
+    y = getLastTableY(doc) + 12;
   }
   
   // Signature section
   y += 10;
+  
+  // Signature box
+  doc.setFillColor(...COLORS.lightGray);
+  doc.roundedRect(pageWidth - 95, y, 80, 45, 3, 3, 'F');
+  
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text(`Fait à Moroni, le ${formatDate(new Date())}`, col2, y);
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.text);
+  doc.text(`Fait à Moroni, le ${formatDate(new Date())}`, pageWidth - 55, y + 10, { align: 'center' });
   
-  y += 15;
   doc.setFont('helvetica', 'bold');
-  doc.text('Signature et cachet', col2, y);
-  doc.text('MAC ASSURANCES', col2, y + 8);
-  
-  // Stamp box
-  doc.setDrawColor(...COLORS.mediumGray);
-  doc.setLineWidth(0.5);
-  doc.roundedRect(col2, y + 12, 60, 30, 3, 3, 'S');
+  doc.setFontSize(9);
+  doc.text('Signature et cachet', pageWidth - 55, y + 20, { align: 'center' });
+  doc.setTextColor(...COLORS.primary);
+  doc.text('MAC ASSURANCES', pageWidth - 55, y + 28, { align: 'center' });
   
   addFooter(doc);
   
@@ -617,191 +678,172 @@ export const generateFicheSubscriptionPDF = (data: FicheSubscriptionPDFData): vo
   const pageHeight = doc.internal.pageSize.getHeight();
   
   // ===== PAGE 1 =====
-  // Header
-  doc.setFillColor(...COLORS.primary);
-  doc.rect(0, 0, pageWidth, 40, 'F');
+  // Professional Header
+  // Top accent bar (yellow)
   doc.setFillColor(...COLORS.accent);
-  doc.rect(0, 40, pageWidth, 3, 'F');
+  doc.rect(0, 0, pageWidth, 5, 'F');
   
-  // Company info
+  // Main header background
+  doc.setFillColor(...COLORS.white);
+  doc.rect(0, 5, pageWidth, 45, 'F');
+  
+  // Bottom border (blue)
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(0, 50, pageWidth, 2, 'F');
+  
+  // Company name styled like logo
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(18);
-  doc.setTextColor(255, 255, 255);
-  doc.text('MAC ASSURANCES', 15, 18);
+  doc.setFontSize(28);
+  doc.setTextColor(...COLORS.primary);
+  doc.text('MAC', 15, 28);
   
+  doc.setFontSize(16);
+  doc.setTextColor(...COLORS.secondary);
+  doc.text('ASSURANCES', 52, 28);
+  
+  // Tagline
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text('Mutuelles et Assurances des Comores', 15, 26);
-  doc.text('Avenue de Strasbourg, Moroni-Bacha', 15, 32);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('Mutuelle d\'Assurance des Comores', 15, 38);
+  doc.text('Avenue de Strasbourg, Moroni-Bacha', 15, 44);
+  
+  // Contact info (right side)
+  doc.setTextColor(...COLORS.text);
+  doc.setFontSize(8);
+  doc.text('www.macassurances.com', pageWidth - 15, 30, { align: 'right' });
+  doc.text('mac.assurances@gmail.com', pageWidth - 15, 36, { align: 'right' });
+  doc.text('Tél: +269 773 00 00', pageWidth - 15, 42, { align: 'right' });
   
   // 10 ans badge
-  doc.setFillColor(255, 255, 255);
-  doc.circle(pageWidth - 30, 22, 12, 'F');
-  doc.setTextColor(...COLORS.primary);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.text('10', pageWidth - 33, 22);
-  doc.setFontSize(8);
-  doc.text('ans', pageWidth - 33, 27);
-  
-  // Contact info
+  doc.setFillColor(...COLORS.primary);
+  doc.circle(pageWidth - 35, 24, 10, 'F');
   doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.text('Le contrat de confiance', pageWidth - 60, 15);
-  doc.text('www.macassurances.com', pageWidth - 60, 22);
-  doc.text('mac.assurances@gmail.com', pageWidth - 60, 29);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text('10', pageWidth - 38, 23);
+  doc.setFontSize(7);
+  doc.text('ans', pageWidth - 38, 28);
   
-  let y = 55;
+  let y = 60;
   
   // Title
+  doc.setFillColor(...COLORS.lightGray);
+  doc.roundedRect(30, y, pageWidth - 60, 20, 3, 3, 'F');
   doc.setTextColor(...COLORS.primary);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.text('FORMULAIRE DE SOUSCRIPTION', pageWidth / 2, y, { align: 'center' });
-  y += 8;
-  doc.setFontSize(14);
-  doc.text('Assurance Maladie Familiale', pageWidth / 2, y, { align: 'center' });
+  doc.text('FORMULAIRE DE SOUSCRIPTION', pageWidth / 2, y + 9, { align: 'center' });
+  doc.setFontSize(12);
+  doc.setTextColor(...COLORS.text);
+  doc.text('Assurance Maladie Familiale', pageWidth / 2, y + 16, { align: 'center' });
   
-  y += 15;
+  y += 30;
   
   // LE CONTRACTANT section
-  y = addSectionTitle(doc, 'LE CONTRACTANT', y);
+  y = addSectionTitle(doc, 'Le contractant', y);
   
   doc.setTextColor(...COLORS.text);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
   
-  doc.setFont('helvetica', 'bold');
-  doc.text(`CLIENT : ${data.client_code}`, 20, y);
-  doc.text(`SCM N°${data.contract_number}`, 100, y);
-  y += 8;
+  // Client and contract info in a nice box
+  doc.setFillColor(...COLORS.lightGray);
+  doc.roundedRect(15, y, pageWidth - 30, 25, 2, 2, 'F');
   
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Raison Social : ${data.raison_sociale}`, 20, y);
-  y += 6;
-  doc.text(`Adresse : ${data.address || ''}`, 20, y);
+  addInfoRow(doc, 'Code Client', data.client_code, 20, y + 8, 30);
+  addInfoRow(doc, 'N° Contrat SCM', data.contract_number, 110, y + 8, 40);
+  addInfoRow(doc, 'Raison Sociale', data.raison_sociale, 20, y + 18, 35);
+  if (data.address) {
+    addInfoRow(doc, 'Adresse', data.address, 110, y + 18, 25);
+  }
   
-  y += 15;
+  y += 35;
   
   // BULLETIN INDIVIDUEL DE SOUSCRIPTION
-  y = addSectionTitle(doc, 'BULLETIN INDIVIDUEL DE SOUSCRIPTION', y);
+  y = addSectionTitle(doc, 'Bulletin individuel de souscription', y);
   
   // 1. Assuré
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(...COLORS.primary);
-  doc.text('1. Assuré :', 20, y);
-  y += 8;
+  doc.text('1. Assuré principal', 20, y);
+  y += 10;
   
-  doc.setTextColor(...COLORS.text);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  
-  const lineHeight = 6;
-  const labelWidth = 55;
+  const lineHeight = 7;
   const col1 = 20;
   
-  const addFormLine = (label: string, value: string, yPos: number): number => {
-    doc.setFont('helvetica', 'bold');
-    doc.text(label + ' :', col1, yPos);
-    doc.setFont('helvetica', 'normal');
-    doc.text(value || '______________________________', col1 + labelWidth, yPos);
-    return yPos + lineHeight;
-  };
-  
-  y = addFormLine('Nom', data.insured.last_name, y);
-  y = addFormLine('Prénom', data.insured.first_name, y);
-  y = addFormLine("Nom de jeune fille (femme mariée)", data.insured.maiden_name || '', y);
-  
-  doc.setFont('helvetica', 'bold');
-  doc.text('Né le :', col1, y);
-  doc.setFont('helvetica', 'normal');
-  doc.text(data.insured.birth_date ? formatDate(data.insured.birth_date) : '________________', col1 + 20, y);
-  doc.text('à', col1 + 55, y);
-  doc.text(data.insured.birth_place || '________________', col1 + 65, y);
+  addInfoRow(doc, 'Nom', data.insured.last_name, col1, y, 35);
+  addInfoRow(doc, 'Prénom', data.insured.first_name, 110, y, 25);
   y += lineHeight;
   
-  y = addFormLine('Adresse', data.insured.address || '', y);
-  y = addFormLine('Entrée du service de contractant le', data.insured.service_entry_date ? formatDate(data.insured.service_entry_date) : '', y);
-  y = addFormLine('Emploi', data.insured.job_title || '', y);
-  y = addFormLine('Lieu de Travail', data.insured.work_location || '', y);
-  y = addFormLine('Téléphone mobile', data.insured.phone || '', y);
-  y = addFormLine('E-mail', data.insured.email || '', y);
-  y = addFormLine("Date d'entrée à l'Assurance", data.insured.insurance_start_date ? formatDate(data.insured.insurance_start_date) : '', y);
+  if (data.insured.maiden_name) {
+    addInfoRow(doc, 'Nom de jeune fille', data.insured.maiden_name, col1, y, 50);
+    y += lineHeight;
+  }
   
-  y += 5;
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(9);
-  doc.text("Déclare donner les informations ci-dessous en vue de ma souscription au contrat", 20, y);
+  addInfoRow(doc, 'Né(e) le', data.insured.birth_date ? formatDate(data.insured.birth_date) : '', col1, y, 25);
+  addInfoRow(doc, 'à', data.insured.birth_place || '', 75, y, 8);
+  y += lineHeight;
   
-  y += 12;
+  addInfoRow(doc, 'Adresse', data.insured.address || '', col1, y, 25);
+  y += lineHeight;
   
-  // DECLARATION DE LA PERSONNE ASSUREE
-  y = addSectionTitle(doc, 'DECLARATION DE LA PERSONNE ASSUREE', y);
+  addInfoRow(doc, 'Emploi', data.insured.job_title || '', col1, y, 25);
+  addInfoRow(doc, 'Lieu de travail', data.insured.work_location || '', 110, y, 40);
+  y += lineHeight;
+  
+  addInfoRow(doc, 'Téléphone', data.insured.phone || '', col1, y, 30);
+  addInfoRow(doc, 'Email', data.insured.email || '', 110, y, 20);
+  y += lineHeight;
+  
+  addInfoRow(doc, 'Date entrée assurance', data.insured.insurance_start_date ? formatDate(data.insured.insurance_start_date) : '', col1, y, 52);
+  y += lineHeight + 5;
   
   // Situation familiale avec checkboxes
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.setTextColor(...COLORS.text);
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.textLight);
   doc.text('Situation Familiale :', 20, y);
   
   const drawCheckbox = (x: number, yPos: number, checked: boolean, label: string) => {
-    doc.setDrawColor(...COLORS.text);
+    doc.setDrawColor(...COLORS.primary);
+    doc.setLineWidth(0.5);
     doc.rect(x, yPos - 3.5, 4, 4);
     if (checked) {
       doc.setFillColor(...COLORS.primary);
       doc.rect(x + 0.5, yPos - 3, 3, 3, 'F');
     }
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...COLORS.text);
+    doc.setFontSize(9);
     doc.text(label, x + 6, yPos);
   };
   
-  const maritalStatusMap: Record<string, string> = {
-    marie: 'Marié',
-    celibataire: 'Célibataire',
-    veuf: 'Veuf',
-    divorce: 'Divorcé',
-    separe: 'Séparé'
-  };
-  
   y += 8;
-  drawCheckbox(25, y, data.insured.marital_status === 'marie', 'Marié');
+  drawCheckbox(25, y, data.insured.marital_status === 'marie', 'Marié(e)');
   drawCheckbox(60, y, data.insured.marital_status === 'celibataire', 'Célibataire');
-  y += 6;
-  drawCheckbox(25, y, data.insured.marital_status === 'veuf', 'Veuf');
-  drawCheckbox(60, y, data.insured.marital_status === 'divorce', 'Divorcé');
-  drawCheckbox(100, y, data.insured.marital_status === 'separe', 'Séparé');
+  drawCheckbox(105, y, data.insured.marital_status === 'veuf', 'Veuf(ve)');
+  drawCheckbox(140, y, data.insured.marital_status === 'divorce', 'Divorcé(e)');
   
   // 2. Conjoint section
   if (data.spouse) {
-    y += 12;
+    y += 15;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(...COLORS.primary);
-    doc.text('2. Conjoint :', 20, y);
-    y += 8;
+    doc.text('2. Conjoint(e)', 20, y);
+    y += 10;
     
-    doc.setTextColor(...COLORS.text);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    
-    y = addFormLine('Nom', data.spouse.last_name, y);
-    y = addFormLine('Prénom', data.spouse.first_name, y);
-    
-    doc.setFont('helvetica', 'bold');
-    doc.text('Né le :', col1, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(data.spouse.birth_date ? formatDate(data.spouse.birth_date) : '________________', col1 + 20, y);
-    doc.text('à', col1 + 55, y);
-    doc.text(data.spouse.birth_place || '________________', col1 + 65, y);
+    addInfoRow(doc, 'Nom', data.spouse.last_name, col1, y, 35);
+    addInfoRow(doc, 'Prénom', data.spouse.first_name, 110, y, 25);
     y += lineHeight;
     
-    y = addFormLine('Adresse', data.spouse.address || '', y);
-    y = addFormLine('Entrée du service de contractant le', data.spouse.service_entry_date || '', y);
-    y = addFormLine('Emploi', data.spouse.job_title || '', y);
-    y = addFormLine('Lieu de Travail', data.spouse.work_location || '', y);
-    y = addFormLine("Date d'entrée à l'Assurance", data.spouse.insurance_start_date || '', y);
+    addInfoRow(doc, 'Né(e) le', data.spouse.birth_date ? formatDate(data.spouse.birth_date) : '', col1, y, 25);
+    addInfoRow(doc, 'à', data.spouse.birth_place || '', 75, y, 8);
+    y += lineHeight;
+    
+    addInfoRow(doc, 'Emploi', data.spouse.job_title || '', col1, y, 25);
+    addInfoRow(doc, 'Lieu de travail', data.spouse.work_location || '', 110, y, 40);
+    y += lineHeight;
   }
   
   // Add footer on page 1
@@ -809,7 +851,7 @@ export const generateFicheSubscriptionPDF = (data: FicheSubscriptionPDFData): vo
   
   // ===== PAGE 2 - Membres de famille =====
   doc.addPage();
-  y = 20;
+  y = addHeader(doc, 'FORMULAIRE', 'DE SOUSCRIPTION');
   
   // Section title
   y = addSectionTitle(doc, '3. Membres de la famille pris en charge', y);
@@ -830,63 +872,73 @@ export const generateFicheSubscriptionPDF = (data: FicheSubscriptionPDFData): vo
         member.birth_date ? formatDate(member.birth_date) : '',
         relationLabels[member.relationship] || member.relationship,
         age.toString(),
-        member.gender === 'M' ? 'Masculin' : 'Féminin',
+        member.gender === 'M' ? 'M' : 'F',
       ];
     });
     
     autoTable(doc, {
       startY: y,
-      head: [['Nom', 'Prénom', 'Né le', 'Parenté', 'Âge', 'Sexe']],
+      head: [['Nom', 'Prénom', 'Date de naissance', 'Parenté', 'Âge', 'Sexe']],
       body: familyData,
-      theme: 'grid',
+      theme: 'plain',
       headStyles: {
         fillColor: COLORS.primary,
         textColor: [255, 255, 255],
         fontStyle: 'bold',
         fontSize: 9,
       },
+      alternateRowStyles: {
+        fillColor: COLORS.lightGray,
+      },
       styles: {
         fontSize: 9,
-        cellPadding: 4,
+        cellPadding: 5,
+        lineColor: COLORS.mediumGray,
+        lineWidth: 0.1,
       },
       margin: { left: 15, right: 15 },
     });
     
     y = getLastTableY(doc) + 15;
+  } else {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(9);
+    doc.setTextColor(...COLORS.textLight);
+    doc.text('Aucun membre de famille enregistré', 20, y);
+    y += 15;
   }
   
   addFooter(doc);
   
   // ===== PAGE 3 - Déclarations de santé =====
   doc.addPage();
-  y = 20;
+  y = addHeader(doc, 'QUESTIONNAIRE', 'DE SANTÉ');
   
-  y = addSectionTitle(doc, 'QUESTIONNAIRE DE SANTE', y);
+  y = addSectionTitle(doc, 'Déclarations de santé', y);
   
   // Health questions table
   const healthQuestions = [
-    'Taille :',
-    'Poids :',
-    'Tension Artérielle :',
+    'Taille (cm)',
+    'Poids (kg)',
+    'Tension artérielle',
     'Êtes-vous actuellement en bonne santé ?',
     'Avez-vous un défaut de constitution, une infirmité ou une maladie chronique ?',
     'Si oui, préciser la nature',
-    "Avez-vous dans le passé été atteint d'affection pulmonaire, nerveuse, cardiaque, rénale, d'albumine, de diabète, de maladie de foi, de cancer ?",
-    "Si oui, préciser à quel âge et donner des détails.",
-    "Préciser les maladies antérieures et l'époque à laquelle vous les avez contractées.",
-    "Pour les Femmes : Souffrez-vous ou avez-vous souffert de maladie liée à votre état de femme ?",
-    "Vos couches sont-elles normales ?",
-    "Avez-vous des cas particuliers autres à signaler que ceux-ci-dessus ?",
+    'Avez-vous dans le passé été atteint d\'affection pulmonaire, nerveuse, cardiaque, rénale ?',
+    'Si oui, préciser à quel âge et donner des détails',
+    'Préciser les maladies antérieures',
+    'Pour les Femmes : Problèmes liés à votre état ?',
+    'Vos couches sont-elles normales ?',
+    'Autres cas particuliers à signaler ?',
   ];
   
   // Prepare columns: Questions + family members
   const headers: string[] = ['Questions', 'Assuré'];
   if (data.spouse) headers.push('Conjoint');
-  data.family_members.slice(0, 4).forEach((_, i) => headers.push(`${i + 1}er enfant`));
+  data.family_members.slice(0, 3).forEach((_, i) => headers.push(`Enfant ${i + 1}`));
   
   const healthRows = healthQuestions.map(q => {
     const row: string[] = [q];
-    // Add empty cells for each person
     for (let i = 1; i < headers.length; i++) {
       row.push('');
     }
@@ -902,15 +954,21 @@ export const generateFicheSubscriptionPDF = (data: FicheSubscriptionPDFData): vo
       fillColor: COLORS.primary,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
-      fontSize: 8,
+      fontSize: 7,
+      cellPadding: 3,
     },
     styles: {
-      fontSize: 8,
-      cellPadding: 3,
+      fontSize: 7,
+      cellPadding: 4,
       minCellHeight: 8,
+      lineColor: COLORS.mediumGray,
+      lineWidth: 0.2,
     },
     columnStyles: {
-      0: { cellWidth: 70 },
+      0: { cellWidth: 55, fontStyle: 'bold' },
+    },
+    alternateRowStyles: {
+      fillColor: COLORS.lightGray,
     },
     margin: { left: 10, right: 10 },
   });
@@ -919,63 +977,87 @@ export const generateFicheSubscriptionPDF = (data: FicheSubscriptionPDFData): vo
   
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(8);
-  doc.setTextColor(...COLORS.text);
-  doc.text("Tout trait tiré en travers d'une case ne constitue pas une réponse !", 20, y);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('* Tout trait tiré en travers d\'une case ne constitue pas une réponse valide.', 20, y);
   
   addFooter(doc);
   
   // ===== PAGE 4 - Engagement et signature =====
   doc.addPage();
-  y = 20;
+  y = addHeader(doc, 'ENGAGEMENT', 'ET SIGNATURE');
   
-  y = addSectionTitle(doc, 'ENGAGEMENT', y);
+  y = addSectionTitle(doc, 'Engagement du souscripteur', y);
   
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(...COLORS.text);
   
-  const engagementText = "Je soussigné, déclare que toutes les réponses ci-dessus sont exactes et sincères. Je certifie avoir signalé toutes les maladies et infirmités actuelles ou antérieures dont j'ai pu avoir connaissance, pour moi-même et ma famille. J'accepte que le présent document serve de base aux garanties du contrat.";
+  const engagementText = "Je soussigné(e), déclare que toutes les réponses ci-dessus sont exactes et sincères. Je certifie avoir signalé toutes les maladies et infirmités actuelles ou antérieures dont j'ai pu avoir connaissance, pour moi-même et ma famille. J'accepte que le présent document serve de base aux garanties du contrat.";
   const splitEngagement = doc.splitTextToSize(engagementText, pageWidth - 40);
   doc.text(splitEngagement, 20, y);
-  y += splitEngagement.length * 5 + 5;
+  y += splitEngagement.length * 5 + 10;
   
-  const warningText = "Je note que toute fausse déclaration intentionnelle, toute réticence entraîne la nullité du contrat conformément à l'article 18 du code des Assurances, les primes échues restant acquises à la compagnie.";
-  const splitWarning = doc.splitTextToSize(warningText, pageWidth - 40);
-  doc.text(splitWarning, 20, y);
-  y += splitWarning.length * 5 + 15;
+  // Warning box
+  doc.setFillColor(255, 245, 245);
+  doc.setDrawColor(...COLORS.error);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(15, y, pageWidth - 30, 25, 2, 2, 'FD');
+  
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.error);
+  doc.text('ATTENTION', 20, y + 8);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.text);
+  const warningText = "Toute fausse déclaration intentionnelle, toute réticence entraîne la nullité du contrat conformément à l'article 18 du code des Assurances, les primes échues restant acquises à la compagnie.";
+  const splitWarning = doc.splitTextToSize(warningText, pageWidth - 50);
+  doc.text(splitWarning, 20, y + 15);
+  
+  y += 40;
   
   // Signature section
   doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(...COLORS.text);
   doc.text(`Fait à ${data.signature_location || 'Moroni'} le ${data.signature_date ? formatDate(data.signature_date) : '........................'}`, 20, y);
   
   y += 15;
+  
+  // Signature boxes
   doc.setFont('helvetica', 'bold');
-  doc.text('Signature de l\'assuré', 20, y);
+  doc.setFontSize(10);
+  doc.text('Signature de l\'assuré(e)', 25, y);
+  doc.text('Lu et approuvé', 35, y + 8);
   
   // Signature box for insured
   doc.setDrawColor(...COLORS.mediumGray);
   doc.setLineWidth(0.5);
-  doc.roundedRect(20, y + 5, 70, 35, 3, 3, 'S');
+  doc.roundedRect(20, y + 12, 75, 40, 3, 3, 'S');
   
-  y += 55;
+  y += 65;
   
   // Section réservée à l'assureur
-  y = addSectionTitle(doc, 'PARTIE RESERVEE A L\'ASSUREUR ET A SON MEDECIN CONSEIL', y);
+  y = addSectionTitle(doc, 'Partie réservée à l\'assureur et à son médecin conseil', y);
   
   autoTable(doc, {
     startY: y,
-    head: [['Acceptation simple', 'Réserves / exclusions']],
+    head: [['Acceptation simple', 'Réserves / Exclusions']],
     body: [['', '']],
-    theme: 'grid',
+    theme: 'plain',
     headStyles: {
-      fillColor: COLORS.secondary,
+      fillColor: COLORS.primaryDark,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
+      fontSize: 10,
     },
     styles: {
       fontSize: 10,
-      cellPadding: 15,
+      cellPadding: 20,
       minCellHeight: 40,
+      lineColor: COLORS.mediumGray,
+      lineWidth: 0.3,
     },
     margin: { left: 20, right: 20 },
   });
@@ -983,11 +1065,15 @@ export const generateFicheSubscriptionPDF = (data: FicheSubscriptionPDFData): vo
   y = getLastTableY(doc) + 15;
   
   // Cachet assureur
+  doc.setFillColor(...COLORS.lightGray);
+  doc.roundedRect(pageWidth - 95, y, 80, 45, 3, 3, 'F');
+  
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('Signature et cachet MAC ASSURANCES', pageWidth - 90, y);
-  doc.setDrawColor(...COLORS.mediumGray);
-  doc.roundedRect(pageWidth - 90, y + 5, 70, 35, 3, 3, 'S');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.text);
+  doc.text('Signature et cachet', pageWidth - 55, y + 12, { align: 'center' });
+  doc.setTextColor(...COLORS.primary);
+  doc.text('MAC ASSURANCES', pageWidth - 55, y + 22, { align: 'center' });
   
   addFooter(doc);
   
