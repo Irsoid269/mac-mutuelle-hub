@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,13 +41,50 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
   const [currentTab, setCurrentTab] = useState('contractant');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Contract data
+  // Contract data - auto-generated
   const [clientCode, setClientCode] = useState('');
   const [contractNumber, setContractNumber] = useState('');
   const [raisonSociale, setRaisonSociale] = useState('');
   const [contractAddress, setContractAddress] = useState('');
   const [contractPhone, setContractPhone] = useState('');
   const [contractEmail, setContractEmail] = useState('');
+
+  // Génération automatique du Code Client et N° Contrat au chargement
+  useEffect(() => {
+    const generateCodes = async () => {
+      try {
+        // Récupérer le dernier code client pour incrémenter
+        const { data: lastContract } = await supabase
+          .from('contracts')
+          .select('client_code')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        // Générer le nouveau code client (format: 00001, 00002, etc.)
+        let nextCode = 1;
+        if (lastContract?.client_code) {
+          const lastNumber = parseInt(lastContract.client_code, 10);
+          if (!isNaN(lastNumber)) {
+            nextCode = lastNumber + 1;
+          }
+        }
+        const newClientCode = nextCode.toString().padStart(5, '0');
+        setClientCode(newClientCode);
+
+        // Générer le N° Contrat (format: MSF25-XXXX-XXX-XXX/AMF)
+        const year = new Date().getFullYear().toString().slice(-2);
+        const random1 = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        const random2 = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        const random3 = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        const newContractNumber = `MSF${year}-${random1}-${random2}-${random3}/AMF`;
+        setContractNumber(newContractNumber);
+      } catch (error) {
+        console.error('Error generating codes:', error);
+      }
+    };
+    generateCodes();
+  }, []);
 
   // Insured data
   const [lastName, setLastName] = useState('');
@@ -322,9 +359,11 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
               <div className="input-group">
                 <Label className="input-label">Code Client *</Label>
                 <Input
-                  placeholder="00225"
+                  placeholder="00001"
                   value={clientCode}
                   onChange={(e) => setClientCode(e.target.value)}
+                  readOnly
+                  className="bg-muted font-mono"
                   required
                 />
               </div>
@@ -334,6 +373,8 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
                   placeholder="MSF25-XXXX-XXX-XXX/AMF"
                   value={contractNumber}
                   onChange={(e) => setContractNumber(e.target.value)}
+                  readOnly
+                  className="bg-muted font-mono"
                   required
                 />
               </div>
