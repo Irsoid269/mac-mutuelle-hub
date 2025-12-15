@@ -1477,3 +1477,157 @@ export const generateSubscriptionSummaryPDF = (data: SubscriptionSummaryPDFData)
   
   doc.save(`Recapitulatif_Souscriptions_${format(today, 'yyyy-MM-dd')}.pdf`);
 };
+
+// ===== RÉCAPITULATIF DES ASSURÉS =====
+export interface InsuredSummaryPDFData {
+  insured: {
+    matricule: string;
+    first_name: string;
+    last_name: string;
+    gender: string;
+    birth_date: string;
+    phone?: string;
+    email?: string;
+    employer?: string;
+    job_title?: string;
+    status: string;
+    has_paid_contribution: boolean;
+    contract_number?: string;
+  }[];
+  stats: {
+    total: number;
+    male: number;
+    female: number;
+    with_paid_contribution: number;
+    without_paid_contribution: number;
+  };
+}
+
+export const generateInsuredSummaryPDF = (data: InsuredSummaryPDFData): void => {
+  const doc = new jsPDF('landscape');
+  const pageWidth = doc.internal.pageSize.getWidth();
+  
+  let y = addHeader(doc, 'RÉCAPITULATIF', 'DES ASSURÉS');
+  
+  // Date box
+  const today = new Date();
+  const dateLabel = format(today, 'dd MMMM yyyy', { locale: fr });
+  
+  doc.setFillColor(...COLORS.primary);
+  doc.roundedRect(pageWidth - 95, y, 80, 22, 3, 3, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text('Date d\'édition', pageWidth - 55, y + 8, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text(dateLabel.toUpperCase(), pageWidth - 55, y + 17, { align: 'center' });
+  
+  y += 30;
+  
+  // Statistics cards
+  const cardWidth = 50;
+  const cardSpacing = 8;
+  const startX = 15;
+  
+  const statsCards = [
+    { label: 'Total Assurés', value: data.stats.total.toString(), color: COLORS.primary },
+    { label: 'Hommes', value: data.stats.male.toString(), color: [59, 130, 246] as [number, number, number] },
+    { label: 'Femmes', value: data.stats.female.toString(), color: [236, 72, 153] as [number, number, number] },
+    { label: 'Cotisation payée', value: data.stats.with_paid_contribution.toString(), color: COLORS.success },
+    { label: 'Non payée', value: data.stats.without_paid_contribution.toString(), color: COLORS.warning },
+  ];
+  
+  statsCards.forEach((card, index) => {
+    const x = startX + (cardWidth + cardSpacing) * index;
+    
+    // Card background
+    doc.setFillColor(...COLORS.lightGray);
+    doc.roundedRect(x, y, cardWidth, 24, 2, 2, 'F');
+    
+    // Top accent
+    doc.setFillColor(card.color[0], card.color[1], card.color[2]);
+    doc.rect(x, y, cardWidth, 3, 'F');
+    
+    // Label
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...COLORS.textLight);
+    doc.text(card.label, x + cardWidth / 2, y + 11, { align: 'center' });
+    
+    // Value
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(card.color[0], card.color[1], card.color[2]);
+    doc.text(card.value, x + cardWidth / 2, y + 21, { align: 'center' });
+  });
+  
+  y += 35;
+  
+  // Insured table
+  y = addSectionTitle(doc, 'Liste des assurés', y);
+  
+  const tableData = data.insured.map(i => [
+    i.matricule,
+    `${i.first_name} ${i.last_name}`,
+    i.gender === 'M' ? 'M' : 'F',
+    formatDate(i.birth_date),
+    i.phone || '—',
+    i.employer || '—',
+    i.job_title || '—',
+    i.contract_number || '—',
+    i.has_paid_contribution ? 'Payée' : 'Non payée',
+  ]);
+  
+  autoTable(doc, {
+    startY: y,
+    head: [['Matricule', 'Nom Complet', 'Genre', 'Naissance', 'Téléphone', 'Employeur', 'Poste', 'N° Contrat', 'Cotisation']],
+    body: tableData,
+    theme: 'striped',
+    headStyles: {
+      fillColor: COLORS.primary,
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 9,
+    },
+    bodyStyles: {
+      fontSize: 8,
+    },
+    alternateRowStyles: {
+      fillColor: COLORS.lightGray,
+    },
+    styles: {
+      cellPadding: 4,
+      lineColor: COLORS.mediumGray,
+      lineWidth: 0.1,
+    },
+    columnStyles: {
+      0: { cellWidth: 30 },
+      1: { cellWidth: 45 },
+      2: { cellWidth: 15, halign: 'center' },
+      3: { cellWidth: 25, halign: 'center' },
+      4: { cellWidth: 30 },
+      5: { cellWidth: 40 },
+      6: { cellWidth: 35 },
+      7: { cellWidth: 35 },
+      8: { cellWidth: 25, halign: 'center' },
+    },
+    margin: { left: 15, right: 15 },
+    didParseCell: (hookData) => {
+      // Color cotisation cells
+      if (hookData.section === 'body' && hookData.column.index === 8) {
+        const cellValue = hookData.cell.raw as string;
+        if (cellValue === 'Payée') {
+          hookData.cell.styles.textColor = COLORS.success as any;
+          hookData.cell.styles.fontStyle = 'bold';
+        } else if (cellValue === 'Non payée') {
+          hookData.cell.styles.textColor = COLORS.warning as any;
+        }
+      }
+    },
+  });
+  
+  addFooter(doc);
+  
+  doc.save(`Recapitulatif_Assures_${format(today, 'yyyy-MM-dd')}.pdf`);
+};
