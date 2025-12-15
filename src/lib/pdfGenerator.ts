@@ -1996,30 +1996,30 @@ export const generateInsuredCardPDF = async (
   doc.roundedRect(cardX, cardY, cardWidth, cardHeight, 6, 6, 'S');
   
   // ============ TOP HEADER SECTION ============
-  // Yellow accent stripe at top
+  // Yellow accent stripe at very top
   doc.setFillColor(...COLORS.accent);
-  doc.roundedRect(cardX, cardY, cardWidth, 5, 6, 6, 'F');
+  doc.roundedRect(cardX, cardY, cardWidth, 4, 6, 6, 'F');
   doc.setFillColor(255, 255, 255);
-  doc.rect(cardX, cardY + 3, cardWidth, 2, 'F');
+  doc.rect(cardX, cardY + 2, cardWidth, 2, 'F');
   
-  // Blue header band
+  // White header band (for better logo visibility)
+  doc.setFillColor(255, 255, 255);
+  doc.rect(cardX, cardY + 4, cardWidth, 30, 'F');
+  
+  // Blue accent line under header
   doc.setFillColor(...COLORS.primary);
-  doc.rect(cardX, cardY + 5, cardWidth, 28, 'F');
+  doc.rect(cardX, cardY + 34, cardWidth, 2, 'F');
   
-  // Decorative diagonal stripe
-  doc.setFillColor(30, 170, 230);
-  doc.moveTo(cardX + cardWidth - 80, cardY + 5);
-  doc.lineTo(cardX + cardWidth, cardY + 5);
-  doc.lineTo(cardX + cardWidth, cardY + 33);
-  doc.lineTo(cardX + cardWidth - 60, cardY + 33);
-  doc.fill();
+  // Left decorative blue stripe
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(cardX, cardY + 4, 4, 30, 'F');
   
   // ============ LOGO AND COMPANY INFO ============
-  let logoEndX = cardX + 10;
+  let logoEndX = cardX + 12;
   if (logoBase64) {
     try {
-      doc.addImage(logoBase64, 'PNG', cardX + 8, cardY + 9, 22, 19);
-      logoEndX = cardX + 34;
+      doc.addImage(logoBase64, 'PNG', cardX + 10, cardY + 8, 24, 21);
+      logoEndX = cardX + 38;
     } catch {
       // Fallback handled below
     }
@@ -2028,23 +2028,23 @@ export const generateInsuredCardPDF = async (
   // Company name
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(...COLORS.primary);
   doc.text('MAC ASSURANCES', logoEndX + 4, cardY + 17);
   
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.setTextColor(255, 255, 255, 0.9);
-  doc.text("Mutuelle d'Assurance des Comores", logoEndX + 4, cardY + 24);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text("Mutuelle d'Assurance des Comores", logoEndX + 4, cardY + 25);
   
   // Card type badge on right
-  doc.setFillColor(255, 229, 0);
-  doc.roundedRect(cardX + cardWidth - 58, cardY + 11, 50, 16, 3, 3, 'F');
+  doc.setFillColor(...COLORS.accent);
+  doc.roundedRect(cardX + cardWidth - 58, cardY + 10, 50, 18, 3, 3, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
+  doc.setFontSize(8);
   doc.setTextColor(...COLORS.text);
-  doc.text('CARTE D\'ASSURÉ', cardX + cardWidth - 33, cardY + 17, { align: 'center' });
-  doc.setFontSize(6);
-  doc.text('PRINCIPAL', cardX + cardWidth - 33, cardY + 23, { align: 'center' });
+  doc.text("CARTE D'ASSURÉ", cardX + cardWidth - 33, cardY + 18, { align: 'center' });
+  doc.setFontSize(7);
+  doc.text('PRINCIPAL', cardX + cardWidth - 33, cardY + 25, { align: 'center' });
   
   // ============ MAIN CONTENT AREA ============
   const contentY = cardY + 40;
