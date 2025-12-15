@@ -84,7 +84,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen transition-all duration-300 ease-in-out',
+        'fixed left-0 top-0 z-40 h-screen flex flex-col transition-all duration-300 ease-in-out',
         'bg-sidebar border-r border-sidebar-border',
         collapsed ? 'w-20' : 'w-64'
       )}
@@ -116,7 +116,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin">
+      <nav className="flex-1 min-h-0 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin">
         <div className={cn('mb-2 px-3', collapsed && 'px-0 text-center')}>
           <span className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/40">
             {collapsed ? '•••' : 'Menu Principal'}
