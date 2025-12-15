@@ -1,4 +1,4 @@
-import { FileText, Users, CreditCard, TrendingUp, AlertCircle, Clock, RefreshCw, Wallet } from 'lucide-react';
+import { FileText, Users, CreditCard, TrendingUp, Clock, RefreshCw, Wallet, PiggyBank, ArrowDownCircle, ArrowUpCircle, Calculator } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ReimbursementChart } from '@/components/dashboard/ReimbursementChart';
 import { StatusPieChart } from '@/components/dashboard/StatusPieChart';
@@ -85,50 +85,74 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <StatCard
-          title="Total Contrats"
-          value={stats.totalContracts}
-          change={`+${stats.contractsThisMonth} ce mois`}
-          changeType={stats.contractsThisMonth > 0 ? 'positive' : 'neutral'}
-          icon={FileText}
-        />
-        <StatCard
-          title="Assurés Actifs"
-          value={stats.activeInsured}
-          change="Statut validé"
-          changeType="positive"
-          icon={Users}
-        />
-        <StatCard
-          title="Remboursements en cours"
-          value={stats.pendingReimbursements}
-          change={stats.pendingReimbursements > 5 ? 'Urgents à traiter' : 'À traiter'}
-          changeType={stats.pendingReimbursements > 5 ? 'negative' : 'neutral'}
-          icon={Clock}
-        />
-        <StatCard
-          title="Cotisations ce mois"
-          value={formatCurrency(stats.monthlyContributionsTotal)}
-          change="Encaissées"
-          changeType="positive"
-          icon={CreditCard}
-        />
-        <StatCard
-          title="Remboursements ce mois"
-          value={formatCurrency(stats.monthlyReimbursementsTotal)}
-          change="Payés"
-          changeType={stats.monthlyReimbursementsTotal > 0 ? 'negative' : 'neutral'}
-          icon={Wallet}
-        />
-        <StatCard
-          title="Solde mensuel"
-          value={formatCurrency(stats.monthlyContributionsTotal - stats.monthlyReimbursementsTotal)}
-          change="Cotisations - Remboursements"
-          changeType={stats.monthlyContributionsTotal - stats.monthlyReimbursementsTotal >= 0 ? 'positive' : 'negative'}
-          icon={TrendingUp}
-        />
+      {/* Section Globale */}
+      <div className="space-y-2">
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Vue globale</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="Total Contrats"
+            value={stats.totalContracts}
+            change={`+${stats.contractsThisMonth} ce mois`}
+            changeType={stats.contractsThisMonth > 0 ? 'positive' : 'neutral'}
+            icon={FileText}
+          />
+          <StatCard
+            title="Assurés Actifs"
+            value={stats.activeInsured}
+            change="Statut validé"
+            changeType="positive"
+            icon={Users}
+          />
+          <StatCard
+            title="Total Cotisations Encaissées"
+            value={formatCurrency(stats.totalContributionsPaid)}
+            change="Depuis le début"
+            changeType="positive"
+            icon={PiggyBank}
+          />
+          <StatCard
+            title="Total Remboursements Payés"
+            value={formatCurrency(stats.totalReimbursementsPaid)}
+            change="Depuis le début"
+            changeType="neutral"
+            icon={Wallet}
+          />
+        </div>
+      </div>
+
+      {/* Section Mensuelle */}
+      <div className="space-y-2">
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Ce mois-ci</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            title="Cotisations encaissées"
+            value={formatCurrency(stats.monthlyContributionsTotal)}
+            change="Ce mois"
+            changeType="positive"
+            icon={ArrowDownCircle}
+          />
+          <StatCard
+            title="Remboursements payés"
+            value={formatCurrency(stats.monthlyReimbursementsTotal)}
+            change="Ce mois"
+            changeType={stats.monthlyReimbursementsTotal > 0 ? 'negative' : 'neutral'}
+            icon={ArrowUpCircle}
+          />
+          <StatCard
+            title="Solde mensuel"
+            value={formatCurrency(stats.monthlyContributionsTotal - stats.monthlyReimbursementsTotal)}
+            change="Cotisations - Remboursements"
+            changeType={stats.monthlyContributionsTotal - stats.monthlyReimbursementsTotal >= 0 ? 'positive' : 'negative'}
+            icon={Calculator}
+          />
+          <StatCard
+            title="Remboursements en cours"
+            value={stats.pendingReimbursements}
+            change={stats.pendingReimbursements > 5 ? 'Urgents à traiter' : 'À traiter'}
+            changeType={stats.pendingReimbursements > 5 ? 'negative' : 'neutral'}
+            icon={Clock}
+          />
+        </div>
       </div>
 
       {/* Charts Section */}
