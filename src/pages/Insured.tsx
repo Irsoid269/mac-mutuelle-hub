@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Download, Eye, Edit, MoreHorizontal, Phone, Mail, MapPin, CheckCircle, XCircle, Info } from 'lucide-react';
+import { Search, Download, Eye, Edit, MoreHorizontal, Phone, Mail, MapPin, CheckCircle, XCircle, Info, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -16,7 +16,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
-import { useEffect, useState as useStateEffect } from 'react';
+import { generateInsuredSummaryPDF, type InsuredSummaryPDFData } from '@/lib/pdfGenerator';
+import { toast } from 'sonner';
 
 export default function Insured() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,6 +54,45 @@ export default function Insured() {
     reserve_medicale: 'Réserve médicale',
   };
 
+  const handleGenerateSummaryPDF = () => {
+    try {
+      const stats = {
+        total: insured.length,
+        male: insured.filter(i => i.gender === 'M').length,
+        female: insured.filter(i => i.gender === 'F').length,
+        with_paid_contribution: insured.filter(i => i.has_paid_contribution).length,
+        without_paid_contribution: insured.filter(i => !i.has_paid_contribution).length,
+      };
+
+      const summaryData: InsuredSummaryPDFData = {
+        insured: insured.map(i => ({
+          matricule: i.matricule,
+          first_name: i.first_name,
+          last_name: i.last_name,
+          gender: i.gender,
+          birth_date: i.birth_date,
+          phone: i.phone,
+          email: i.email,
+          employer: i.employer,
+          job_title: i.job_title,
+          status: i.status,
+          has_paid_contribution: i.has_paid_contribution,
+          contract_number: i.contract?.contract_number,
+        })),
+        stats,
+      };
+
+      generateInsuredSummaryPDF(summaryData);
+      toast.success('PDF généré', {
+        description: 'Le récapitulatif des assurés a été téléchargé.',
+      });
+    } catch (error) {
+      toast.error('Erreur', {
+        description: 'Impossible de générer le récapitulatif.',
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-in">
@@ -76,13 +116,9 @@ export default function Insured() {
           <p className="page-subtitle">{insured.length} assurés enregistrés</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <Download className="w-4 h-4" />
-            Export Excel
-          </Button>
-          <Button variant="outline" className="gap-2">
-            <Download className="w-4 h-4" />
-            Export PDF
+          <Button variant="outline" className="gap-2" onClick={handleGenerateSummaryPDF}>
+            <FileText className="w-4 h-4" />
+            Récapitulatif PDF
           </Button>
         </div>
       </div>
