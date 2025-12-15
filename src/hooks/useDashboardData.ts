@@ -115,13 +115,13 @@ export function useDashboardData() {
       // Fetch monthly reimbursements total (paid this month)
       const { data: monthlyReimbursements } = await supabase
         .from('reimbursements')
-        .select('paid_amount')
+        .select('paid_amount, approved_amount, claimed_amount')
         .eq('status', 'paye')
         .gte('paid_at', startOfCurrentMonth.toISOString())
         .lte('paid_at', endOfCurrentMonth.toISOString());
 
       const reimbursementsTotal = monthlyReimbursements?.reduce(
-        (sum, r) => sum + (r.paid_amount || 0),
+        (sum, r) => sum + (r.paid_amount || r.approved_amount || r.claimed_amount || 0),
         0
       ) || 0;
 
@@ -139,11 +139,11 @@ export function useDashboardData() {
       // Fetch total reimbursements paid (all time)
       const { data: allReimbursements } = await supabase
         .from('reimbursements')
-        .select('paid_amount')
+        .select('paid_amount, approved_amount, claimed_amount')
         .eq('status', 'paye');
 
       const totalReimbursements = allReimbursements?.reduce(
-        (sum, r) => sum + (r.paid_amount || 0),
+        (sum, r) => sum + (r.paid_amount || r.approved_amount || r.claimed_amount || 0),
         0
       ) || 0;
 
