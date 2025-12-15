@@ -85,74 +85,75 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Section Globale */}
-      <div className="space-y-2">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Vue globale</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Total Contrats"
-            value={stats.totalContracts}
-            change={`+${stats.contractsThisMonth} ce mois`}
-            changeType={stats.contractsThisMonth > 0 ? 'positive' : 'neutral'}
-            icon={FileText}
-          />
-          <StatCard
-            title="Assurés Actifs"
-            value={stats.activeInsured}
-            change="Statut validé"
-            changeType="positive"
-            icon={Users}
-          />
-          <StatCard
-            title="Total Cotisations Encaissées"
-            value={formatCurrency(stats.totalContributionsPaid)}
-            change="Depuis le début"
-            changeType="positive"
-            icon={PiggyBank}
-          />
-          <StatCard
-            title="Total Remboursements Payés"
-            value={formatCurrency(stats.totalReimbursementsPaid)}
-            change="Depuis le début"
-            changeType="neutral"
-            icon={Wallet}
-          />
-        </div>
+      {/* Statistiques principales */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <StatCard
+          title="Total Contrats"
+          value={stats.totalContracts}
+          change={`+${stats.contractsThisMonth} ce mois`}
+          changeType={stats.contractsThisMonth > 0 ? 'positive' : 'neutral'}
+          icon={FileText}
+        />
+        <StatCard
+          title="Assurés Actifs"
+          value={stats.activeInsured}
+          change="Statut validé"
+          changeType="positive"
+          icon={Users}
+        />
+        <StatCard
+          title="En cours"
+          value={stats.pendingReimbursements}
+          change={stats.pendingReimbursements > 5 ? 'Urgents' : 'À traiter'}
+          changeType={stats.pendingReimbursements > 5 ? 'negative' : 'neutral'}
+          icon={Clock}
+        />
+        <StatCard
+          title="Total Encaissé"
+          value={formatCurrency(stats.totalContributionsPaid)}
+          change="Cotisations"
+          changeType="positive"
+          icon={PiggyBank}
+        />
+        <StatCard
+          title="Total Payé"
+          value={formatCurrency(stats.totalReimbursementsPaid)}
+          change="Remboursements"
+          changeType="neutral"
+          icon={Wallet}
+        />
       </div>
 
-      {/* Section Mensuelle */}
-      <div className="space-y-2">
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Ce mois-ci</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Cotisations encaissées"
-            value={formatCurrency(stats.monthlyContributionsTotal)}
-            change="Ce mois"
-            changeType="positive"
-            icon={ArrowDownCircle}
-          />
-          <StatCard
-            title="Remboursements payés"
-            value={formatCurrency(stats.monthlyReimbursementsTotal)}
-            change="Ce mois"
-            changeType={stats.monthlyReimbursementsTotal > 0 ? 'negative' : 'neutral'}
-            icon={ArrowUpCircle}
-          />
-          <StatCard
-            title="Solde mensuel"
-            value={formatCurrency(stats.monthlyContributionsTotal - stats.monthlyReimbursementsTotal)}
-            change="Cotisations - Remboursements"
-            changeType={stats.monthlyContributionsTotal - stats.monthlyReimbursementsTotal >= 0 ? 'positive' : 'negative'}
-            icon={Calculator}
-          />
-          <StatCard
-            title="Remboursements en cours"
-            value={stats.pendingReimbursements}
-            change={stats.pendingReimbursements > 5 ? 'Urgents à traiter' : 'À traiter'}
-            changeType={stats.pendingReimbursements > 5 ? 'negative' : 'neutral'}
-            icon={Clock}
-          />
-        </div>
+      {/* Statistiques mensuelles */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard
+          title="Cotisations du mois"
+          value={formatCurrency(stats.monthlyContributionsTotal)}
+          change="Encaissées"
+          changeType="positive"
+          icon={ArrowDownCircle}
+        />
+        <StatCard
+          title="Remboursements du mois"
+          value={formatCurrency(stats.monthlyReimbursementsTotal)}
+          change="Payés"
+          changeType={stats.monthlyReimbursementsTotal > 0 ? 'negative' : 'neutral'}
+          icon={ArrowUpCircle}
+        />
+        <StatCard
+          title="Solde mensuel"
+          value={formatCurrency(stats.monthlyContributionsTotal - stats.monthlyReimbursementsTotal)}
+          change="Entrées - Sorties"
+          changeType={stats.monthlyContributionsTotal - stats.monthlyReimbursementsTotal >= 0 ? 'positive' : 'negative'}
+          icon={Calculator}
+        />
+        <StatCard
+          title="Solde global"
+          value={formatCurrency(stats.totalContributionsPaid - stats.totalReimbursementsPaid)}
+          change="Depuis le début"
+          changeType={stats.totalContributionsPaid - stats.totalReimbursementsPaid >= 0 ? 'positive' : 'negative'}
+          icon={TrendingUp}
+        />
       </div>
 
       {/* Charts Section */}

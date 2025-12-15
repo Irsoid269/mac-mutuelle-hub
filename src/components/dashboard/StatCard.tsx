@@ -20,14 +20,14 @@ export function StatCard({
 }: StatCardProps) {
   return (
     <div className="stat-card group animate-slide-up">
-      <div className="flex items-start justify-between">
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="text-3xl font-bold text-foreground tracking-tight">{value}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0 space-y-1">
+          <p className="text-sm font-medium text-muted-foreground truncate">{title}</p>
+          <p className="text-2xl font-bold text-foreground tracking-tight truncate">{value}</p>
           {change && (
             <p
               className={cn(
-                'text-xs font-medium flex items-center gap-1',
+                'text-xs font-medium truncate',
                 changeType === 'positive' && 'text-success',
                 changeType === 'negative' && 'text-destructive',
                 changeType === 'neutral' && 'text-muted-foreground'
@@ -39,11 +39,11 @@ export function StatCard({
         </div>
         <div
           className={cn(
-            'p-3 rounded-xl transition-transform duration-300 group-hover:scale-110',
+            'p-2.5 rounded-xl transition-transform duration-300 group-hover:scale-110 shrink-0',
             'bg-primary/10'
           )}
         >
-          <Icon className={cn('w-6 h-6', iconColor)} />
+          <Icon className={cn('w-5 h-5', iconColor)} />
         </div>
       </div>
     </div>
