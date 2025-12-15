@@ -196,6 +196,34 @@ export function useContributionsData(searchTerm: string = '', statusFilter: stri
     return data || [];
   };
 
+  const getPaymentsForExport = async (startDate: string, endDate: string) => {
+    const { data, error } = await supabase
+      .from('contribution_payments')
+      .select(`
+        *,
+        contribution:contribution_id (
+          amount,
+          period_start,
+          period_end,
+          contract:contract_id (
+            contract_number,
+            raison_sociale,
+            client_code
+          )
+        )
+      `)
+      .gte('payment_date', startDate)
+      .lte('payment_date', endDate + 'T23:59:59')
+      .order('payment_date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching payments for export:', error);
+      return [];
+    }
+
+    return data || [];
+  };
+
   useEffect(() => {
     fetchData();
 
@@ -219,6 +247,7 @@ export function useContributionsData(searchTerm: string = '', statusFilter: stri
     createContribution,
     updatePaymentStatus,
     getPaymentHistory,
+    getPaymentsForExport,
   };
 }
 

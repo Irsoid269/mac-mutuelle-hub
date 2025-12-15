@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Check, Clock, AlertCircle, CreditCard, Receipt, Download, History } from 'lucide-react';
+import { Plus, Search, Check, Clock, AlertCircle, CreditCard, Receipt, Download, History, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useContributionsData, ContributionPayment } from '@/hooks/useContributionsData';
@@ -33,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import * as XLSX from 'xlsx';
 
 export default function Contributions() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,9 +41,15 @@ export default function Contributions() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
   const [selectedContribution, setSelectedContribution] = useState<any>(null);
   const [paymentHistory, setPaymentHistory] = useState<ContributionPayment[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportDates, setExportDates] = useState({
+    startDate: '',
+    endDate: '',
+  });
   const pdfPreview = usePDFPreview();
 
   // Form state
@@ -80,8 +87,94 @@ export default function Contributions() {
     setIsPaymentOpen(true);
   };
 
-  const { contributions, contracts, stats, isLoading, createContribution, updatePaymentStatus, getPaymentHistory } =
+  const { contributions, contracts, stats, isLoading, createContribution, updatePaymentStatus, getPaymentHistory, getPaymentsForExport } =
     useContributionsData(searchTerm, statusFilter);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('fr-KM', {
+      style: 'decimal',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount) + ' KMF';
+  };
+
+  const handleExportExcel = async () => {
+    if (!exportDates.startDate || !exportDates.endDate) {
+      toast({
+        title: 'Erreur',
+        description: 'Veuillez sélectionner une période.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const payments = await getPaymentsForExport(exportDates.startDate, exportDates.endDate);
+
+      if (payments.length === 0) {
+        toast({
+          title: 'Aucune donnée',
+          description: 'Aucun paiement trouvé pour cette période.',
+          variant: 'destructive',
+        });
+        setIsExporting(false);
+        return;
+      }
+
+      // Prepare data for Excel
+      const excelData = payments.map((payment: any) => ({
+        'Date de paiement': format(new Date(payment.payment_date), 'dd/MM/yyyy HH:mm', { locale: fr }),
+        'Référence': payment.payment_reference || 'N/A',
+        'Contrat': payment.contribution?.contract?.contract_number || 'N/A',
+        'Client': payment.contribution?.contract?.raison_sociale || 'N/A',
+        'Code Client': payment.contribution?.contract?.client_code || 'N/A',
+        'Période': payment.contribution ? 
+          `${format(new Date(payment.contribution.period_start), 'dd/MM/yyyy')} - ${format(new Date(payment.contribution.period_end), 'dd/MM/yyyy')}` : 
+          'N/A',
+        'Montant payé (KMF)': payment.amount,
+        'Notes': payment.notes || '',
+      }));
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 20 }, // Date
+        { wch: 20 }, // Référence
+        { wch: 18 }, // Contrat
+        { wch: 30 }, // Client
+        { wch: 15 }, // Code Client
+        { wch: 25 }, // Période
+        { wch: 18 }, // Montant
+        { wch: 25 }, // Notes
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Paiements');
+
+      // Generate filename with date range
+      const fileName = `paiements_${exportDates.startDate}_${exportDates.endDate}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+
+      toast({
+        title: 'Export réussi',
+        description: `${payments.length} paiement(s) exporté(s) vers ${fileName}`,
+      });
+      setIsExportOpen(false);
+      setExportDates({ startDate: '', endDate: '' });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: 'Erreur',
+        description: "Impossible d'exporter les données.",
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleCreateContribution = async () => {
     try {
@@ -216,9 +309,6 @@ export default function Contributions() {
     );
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-KM', { style: 'currency', currency: 'KMF' }).format(amount);
-  };
 
   if (isLoading) {
     return (
@@ -242,13 +332,61 @@ export default function Contributions() {
           <h1 className="page-title">Gestion des Cotisations</h1>
           <p className="page-subtitle">{stats.total} cotisations enregistrées</p>
         </div>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Nouvelle cotisation
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Dialog open={isExportOpen} onOpenChange={setIsExportOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <FileSpreadsheet className="w-4 h-4" />
+                Export Excel
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Exporter l'historique des paiements</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <p className="text-sm text-muted-foreground">
+                  Sélectionnez la période pour laquelle vous souhaitez exporter les paiements.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="input-group">
+                    <Label className="input-label">Date de début</Label>
+                    <Input
+                      type="date"
+                      value={exportDates.startDate}
+                      onChange={(e) => setExportDates({ ...exportDates, startDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="input-group">
+                    <Label className="input-label">Date de fin</Label>
+                    <Input
+                      type="date"
+                      value={exportDates.endDate}
+                      onChange={(e) => setExportDates({ ...exportDates, endDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button variant="outline" onClick={() => setIsExportOpen(false)}>
+                    Annuler
+                  </Button>
+                  <Button 
+                    onClick={handleExportExcel} 
+                    disabled={!exportDates.startDate || !exportDates.endDate || isExporting}
+                  >
+                    {isExporting ? 'Export en cours...' : 'Exporter'}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="w-4 h-4" />
+                Nouvelle cotisation
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Nouvelle Cotisation</DialogTitle>
@@ -318,6 +456,7 @@ export default function Contributions() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Stats Cards */}
