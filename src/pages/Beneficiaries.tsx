@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Edit, Trash2, User, AlertCircle } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, User, AlertCircle, MoreHorizontal, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useBeneficiariesData } from '@/hooks/useBeneficiariesData';
@@ -19,14 +19,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, differenceInYears } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { generateBeneficiaryCardPDF } from '@/lib/pdfGenerator';
+import { PDFPreview, usePDFPreview } from '@/components/ui/pdf-preview';
 
 export default function Beneficiaries() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const pdfPreview = usePDFPreview();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -39,6 +48,38 @@ export default function Beneficiaries() {
   });
 
   const { beneficiaries, paidInsuredList, isLoading, refetch } = useBeneficiariesData(searchTerm);
+
+  const handleDownloadCard = async (beneficiary: typeof beneficiaries[0]) => {
+    // Fetch full insured data with contract
+    const { data: insuredData } = await supabase
+      .from('insured')
+      .select('*, contracts:contract_id(raison_sociale, contract_number)')
+      .eq('id', beneficiary.insured_id)
+      .single();
+
+    const cardData = {
+      ...beneficiary,
+      insured: insuredData ? {
+        first_name: insuredData.first_name,
+        last_name: insuredData.last_name,
+        matricule: insuredData.matricule,
+        insurance_start_date: insuredData.insurance_start_date,
+        insurance_end_date: insuredData.insurance_end_date,
+        contract: insuredData.contracts ? {
+          raison_sociale: insuredData.contracts.raison_sociale,
+          contract_number: insuredData.contracts.contract_number,
+        } : undefined,
+      } : undefined,
+    };
+
+    pdfPreview.openPreview(
+      async () => {
+        const dataUrl = await generateBeneficiaryCardPDF(cardData);
+        return { dataUrl, fileName: `Carte_AyantDroit_${beneficiary.last_name}_${beneficiary.first_name}.pdf` };
+      },
+      `Carte d'assuré - ${beneficiary.first_name} ${beneficiary.last_name}`
+    );
+  };
 
   const handleSave = async () => {
     try {
@@ -320,19 +361,30 @@ export default function Beneficiaries() {
                     <td>{calculateAge(beneficiary.birth_date)} ans</td>
                     <td>{beneficiary.gender === 'M' ? 'Masculin' : 'Féminin'}</td>
                     <td className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(beneficiary.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Modifier
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownloadCard(beneficiary)}>
+                            <Download className="w-4 h-4 mr-2" />
+                            Télécharger la carte
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDelete(beneficiary.id)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Supprimer
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))
@@ -341,6 +393,16 @@ export default function Beneficiaries() {
           </table>
         </div>
       </div>
+
+      {/* PDF Preview */}
+      <PDFPreview
+        isOpen={pdfPreview.isOpen}
+        onClose={pdfPreview.closePreview}
+        pdfDataUrl={pdfPreview.pdfDataUrl}
+        fileName={pdfPreview.fileName}
+        title={pdfPreview.title}
+        isLoading={pdfPreview.isLoading}
+      />
     </div>
   );
 }
