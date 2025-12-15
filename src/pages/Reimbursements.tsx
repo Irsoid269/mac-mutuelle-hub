@@ -11,6 +11,9 @@ import {
   FileText,
   AlertCircle,
   Building2,
+  Image,
+  File,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FileUpload, type UploadedFile } from '@/components/ui/file-upload';
@@ -54,6 +57,9 @@ export default function Reimbursements() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedReimbursement, setSelectedReimbursement] = useState<any>(null);
   const [filteredProviders, setFilteredProviders] = useState<any[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [reimbursementDocs, setReimbursementDocs] = useState<any[]>([]);
+  const [isLoadingDocs, setIsLoadingDocs] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -72,6 +78,8 @@ export default function Reimbursements() {
     isLoading,
     createReimbursement,
     updateStatus,
+    getReimbursementDocuments,
+    getDocumentUrl,
   } = useReimbursementsData(searchTerm, statusFilter);
 
   const { providers, getProvidersByType } = useProvidersData();
@@ -115,6 +123,7 @@ export default function Reimbursements() {
         provider_id: formData.provider_id || undefined,
         care_type: formData.care_type,
         notes: formData.notes || undefined,
+        files: uploadedFiles,
       });
       toast.success('Demande soumise', {
         description: 'La demande de remboursement a été enregistrée.',
@@ -128,10 +137,25 @@ export default function Reimbursements() {
         care_type: '',
         notes: '',
       });
+      setUploadedFiles([]);
     } catch (error) {
       toast.error('Erreur', {
         description: 'Impossible de créer la demande de remboursement.',
       });
+    }
+  };
+
+  const handleViewDetails = async (reimbursement: any) => {
+    setSelectedReimbursement(reimbursement);
+    setIsLoadingDocs(true);
+    try {
+      const docs = await getReimbursementDocuments(reimbursement.id);
+      setReimbursementDocs(docs);
+    } catch (error) {
+      console.error('Error loading documents:', error);
+      setReimbursementDocs([]);
+    } finally {
+      setIsLoadingDocs(false);
     }
   };
 
@@ -330,8 +354,8 @@ export default function Reimbursements() {
                 <Label className="input-label">Justificatifs</Label>
                 <FileUpload
                   onFilesChange={(files) => {
-                    // Files are available for upload
-                    console.log('Files selected:', files);
+                    const fileList = files.map(f => f.file);
+                    setUploadedFiles(fileList);
                   }}
                   maxFiles={5}
                   maxSizeMB={10}
@@ -484,7 +508,7 @@ export default function Reimbursements() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
                             className="gap-2"
-                            onClick={() => setSelectedReimbursement(r)}
+                            onClick={() => handleViewDetails(r)}
                           >
                             <Eye className="w-4 h-4" />
                             Voir détails
@@ -626,8 +650,55 @@ export default function Reimbursements() {
                 )}
               </div>
 
+              {/* Justificatifs Section */}
+              <div className="p-4 bg-muted/30 rounded-lg">
+                <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Justificatifs ({reimbursementDocs.length})
+                </h4>
+                {isLoadingDocs ? (
+                  <div className="text-sm text-muted-foreground">Chargement...</div>
+                ) : reimbursementDocs.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">Aucun justificatif</div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {reimbursementDocs.map((doc) => {
+                      const isImage = doc.mime_type?.startsWith('image/');
+                      const docUrl = getDocumentUrl(doc.file_url);
+                      
+                      return (
+                        <a
+                          key={doc.id}
+                          href={docUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors group"
+                        >
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                            {isImage ? (
+                              <Image className="w-5 h-5 text-primary" />
+                            ) : (
+                              <File className="w-5 h-5 text-primary" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {doc.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : 'Fichier'}
+                            </p>
+                          </div>
+                          <ExternalLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end gap-3">
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" className="gap-2" onClick={() => handleGeneratePDF(selectedReimbursement)}>
                   <Download className="w-4 h-4" />
                   Télécharger fiche
                 </Button>
