@@ -48,7 +48,7 @@ export function ReimbursementCeilingsTab() {
     return new Intl.NumberFormat('fr-KM', {
       style: 'decimal',
       minimumFractionDigits: 0,
-    }).format(amount) + ' FC';
+    }).format(amount) + ' KMF';
   };
 
   const handleSaveEdit = () => {
