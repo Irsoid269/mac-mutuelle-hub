@@ -284,6 +284,47 @@ export type Database = {
         }
         Relationships: []
       }
+      contribution_payments: {
+        Row: {
+          amount: number
+          contribution_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_reference: string | null
+        }
+        Insert: {
+          amount: number
+          contribution_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_reference?: string | null
+        }
+        Update: {
+          amount?: number
+          contribution_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contribution_payments_contribution_id_fkey"
+            columns: ["contribution_id"]
+            isOneToOne: false
+            referencedRelation: "contributions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contributions: {
         Row: {
           amount: number

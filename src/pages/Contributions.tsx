@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Plus, Search, Check, Clock, AlertCircle, CreditCard, Receipt, Download } from 'lucide-react';
+import { Plus, Search, Check, Clock, AlertCircle, CreditCard, Receipt, Download, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useContributionsData } from '@/hooks/useContributionsData';
+import { useContributionsData, ContributionPayment } from '@/hooks/useContributionsData';
 import {
   Dialog,
   DialogContent,
@@ -25,13 +25,24 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { generateContributionReceiptPDF, ContributionReceiptPDFData } from '@/lib/pdfGenerator';
 import { PDFPreview, usePDFPreview } from '@/components/ui/pdf-preview';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export default function Contributions() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [selectedContribution, setSelectedContribution] = useState<any>(null);
+  const [paymentHistory, setPaymentHistory] = useState<ContributionPayment[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const pdfPreview = usePDFPreview();
 
   // Form state
@@ -49,7 +60,7 @@ export default function Contributions() {
     payment_reference: '',
   });
 
-  const { contributions, contracts, stats, isLoading, createContribution, updatePaymentStatus } =
+  const { contributions, contracts, stats, isLoading, createContribution, updatePaymentStatus, getPaymentHistory } =
     useContributionsData(searchTerm, statusFilter);
 
   const handleCreateContribution = async () => {
@@ -80,15 +91,17 @@ export default function Contributions() {
     if (!selectedContribution) return;
 
     try {
-      const paidAmount = parseFloat(paymentData.paid_amount);
-      const status = paidAmount >= selectedContribution.amount ? 'paye' : 'partiel';
+      const newPaidAmount = parseFloat(paymentData.paid_amount);
+      const totalPaidAmount = selectedContribution.paid_amount + newPaidAmount;
+      const status = totalPaidAmount >= selectedContribution.amount ? 'paye' : 'partiel';
 
       await updatePaymentStatus(
         selectedContribution.id,
         status,
-        paidAmount,
+        totalPaidAmount,
         paymentData.payment_reference,
-        selectedContribution.contract_id
+        selectedContribution.contract_id,
+        selectedContribution.paid_amount
       );
 
       toast({
@@ -132,6 +145,21 @@ export default function Contributions() {
       },
       `Reçu de paiement - ${contribution.contract?.contract_number || 'N/A'}`
     );
+  };
+
+  const handleViewHistory = async (contribution: any) => {
+    setSelectedContribution(contribution);
+    setIsLoadingHistory(true);
+    setIsHistoryOpen(true);
+    try {
+      const history = await getPaymentHistory(contribution.id);
+      setPaymentHistory(history);
+    } catch (error) {
+      console.error('Error loading payment history:', error);
+      setPaymentHistory([]);
+    } finally {
+      setIsLoadingHistory(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -391,14 +419,24 @@ export default function Contributions() {
                     <td className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         {(contribution.payment_status === 'paye' || contribution.payment_status === 'partiel') && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDownloadReceipt(contribution)}
-                            title="Télécharger le reçu"
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleViewHistory(contribution)}
+                              title="Voir l'historique des paiements"
+                            >
+                              <History className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDownloadReceipt(contribution)}
+                              title="Télécharger le reçu"
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          </>
                         )}
                         {contribution.payment_status !== 'paye' && (
                           <Button
@@ -487,6 +525,90 @@ export default function Contributions() {
         title={pdfPreview.title}
         isLoading={pdfPreview.isLoading}
       />
+
+      {/* Payment History Dialog */}
+      <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Historique des paiements</DialogTitle>
+          </DialogHeader>
+          {selectedContribution && (
+            <div className="space-y-4 mt-4">
+              <div className="p-4 rounded-lg bg-muted/50">
+                <p className="text-sm text-muted-foreground">Contrat</p>
+                <p className="font-medium">{selectedContribution.contract?.raison_sociale}</p>
+                <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Montant total: </span>
+                    <span className="font-medium">{formatCurrency(selectedContribution.amount)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Payé: </span>
+                    <span className="font-medium text-green-600">
+                      {formatCurrency(selectedContribution.paid_amount)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Reste: </span>
+                    <span className="font-medium text-orange-600">
+                      {formatCurrency(Math.max(0, selectedContribution.amount - selectedContribution.paid_amount))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {isLoadingHistory ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : paymentHistory.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Aucun paiement enregistré
+                </div>
+              ) : (
+                <div className="border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Montant</TableHead>
+                        <TableHead>Référence</TableHead>
+                        <TableHead>Notes</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paymentHistory.map((payment) => (
+                        <TableRow key={payment.id}>
+                          <TableCell>
+                            {format(new Date(payment.payment_date), 'dd MMM yyyy HH:mm', { locale: fr })}
+                          </TableCell>
+                          <TableCell className="font-medium text-green-600">
+                            {formatCurrency(payment.amount)}
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {payment.payment_reference || '-'}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {payment.notes || '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4">
+                <Button variant="outline" onClick={() => setIsHistoryOpen(false)}>
+                  Fermer
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

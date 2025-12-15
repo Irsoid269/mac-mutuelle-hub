@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+interface ContributionPayment {
+  id: string;
+  contribution_id: string;
+  amount: number;
+  payment_reference: string | null;
+  payment_date: string;
+  notes: string | null;
+  created_at: string;
+}
+
 interface Contribution {
   id: string;
   contract_id: string;
@@ -119,8 +129,12 @@ export function useContributionsData(searchTerm: string = '', statusFilter: stri
     status: string,
     paidAmount: number,
     paymentReference?: string,
-    contractId?: string
+    contractId?: string,
+    previousPaidAmount: number = 0
   ) => {
+    // Calculate the new payment amount (what was just paid)
+    const newPaymentAmount = paidAmount - previousPaidAmount;
+
     const updateData: any = {
       payment_status: status,
       paid_amount: paidAmount,
@@ -141,6 +155,16 @@ export function useContributionsData(searchTerm: string = '', statusFilter: stri
 
     if (error) throw error;
 
+    // Record the payment in the payment history
+    if (newPaymentAmount > 0) {
+      await supabase.from('contribution_payments').insert({
+        contribution_id: id,
+        amount: newPaymentAmount,
+        payment_reference: paymentReference,
+        notes: status === 'partiel' ? 'Paiement partiel' : 'Paiement complet',
+      });
+    }
+
     // Si le paiement est complet, mettre à jour le statut du contrat et des assurés à "validee"
     if (status === 'paye' && contractId) {
       await supabase
@@ -155,6 +179,21 @@ export function useContributionsData(searchTerm: string = '', statusFilter: stri
     }
 
     fetchData();
+  };
+
+  const getPaymentHistory = async (contributionId: string): Promise<ContributionPayment[]> => {
+    const { data, error } = await supabase
+      .from('contribution_payments')
+      .select('*')
+      .eq('contribution_id', contributionId)
+      .order('payment_date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching payment history:', error);
+      return [];
+    }
+
+    return data || [];
   };
 
   useEffect(() => {
@@ -179,5 +218,8 @@ export function useContributionsData(searchTerm: string = '', statusFilter: stri
     refetch: fetchData,
     createContribution,
     updatePaymentStatus,
+    getPaymentHistory,
   };
 }
+
+export type { ContributionPayment };
