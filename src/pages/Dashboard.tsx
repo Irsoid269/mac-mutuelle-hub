@@ -1,4 +1,4 @@
-import { FileText, Users, CreditCard, TrendingUp, AlertCircle, Clock, RefreshCw } from 'lucide-react';
+import { FileText, Users, CreditCard, TrendingUp, AlertCircle, Clock, RefreshCw, Wallet } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ReimbursementChart } from '@/components/dashboard/ReimbursementChart';
 import { StatusPieChart } from '@/components/dashboard/StatusPieChart';
@@ -86,7 +86,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard
           title="Total Contrats"
           value={stats.totalContracts}
@@ -109,10 +109,24 @@ export default function Dashboard() {
           icon={Clock}
         />
         <StatCard
-          title="Total mensuel payé"
+          title="Cotisations ce mois"
           value={formatCurrency(stats.monthlyContributionsTotal)}
-          change="Ce mois"
+          change="Encaissées"
           changeType="positive"
+          icon={CreditCard}
+        />
+        <StatCard
+          title="Remboursements ce mois"
+          value={formatCurrency(stats.monthlyReimbursementsTotal)}
+          change="Payés"
+          changeType={stats.monthlyReimbursementsTotal > 0 ? 'negative' : 'neutral'}
+          icon={Wallet}
+        />
+        <StatCard
+          title="Solde mensuel"
+          value={formatCurrency(stats.monthlyContributionsTotal - stats.monthlyReimbursementsTotal)}
+          change="Cotisations - Remboursements"
+          changeType={stats.monthlyContributionsTotal - stats.monthlyReimbursementsTotal >= 0 ? 'positive' : 'negative'}
           icon={TrendingUp}
         />
       </div>
