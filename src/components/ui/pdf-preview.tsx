@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Download, ZoomIn, ZoomOut, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,9 +28,15 @@ export function PDFPreview({
 }: PDFPreviewProps) {
   const [zoom, setZoom] = useState(100);
 
+  useEffect(() => {
+    if (isOpen) setZoom(100);
+  }, [isOpen]);
+
+  const iframeSrc = pdfDataUrl ? `${pdfDataUrl}#zoom=${zoom}` : undefined;
+
   const handleDownload = () => {
     if (!pdfDataUrl) return;
-    
+
     const link = document.createElement('a');
     link.href = pdfDataUrl;
     link.download = fileName;
@@ -43,7 +49,12 @@ export function PDFPreview({
   const handleZoomOut = () => setZoom((prev) => Math.max(prev - 25, 50));
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -95,18 +106,16 @@ export function PDFPreview({
             </div>
           ) : pdfDataUrl ? (
             <div className="flex justify-center items-start h-full">
-              <iframe
-                src={pdfDataUrl}
-                className="bg-white shadow-lg rounded-lg border border-border"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  minHeight: '500px',
-                  transform: `scale(${zoom / 100})`,
-                  transformOrigin: 'top center',
-                }}
-                title="Aperçu PDF"
-              />
+              <object
+                data={iframeSrc}
+                type="application/pdf"
+                aria-label="Aperçu PDF"
+                className="w-full h-[75vh] bg-white shadow-lg rounded-lg border border-border"
+              >
+                <p className="text-sm text-muted-foreground p-4">
+                  Impossible d'afficher l'aperçu PDF dans votre navigateur. Cliquez sur « Télécharger ».
+                </p>
+              </object>
             </div>
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -126,6 +135,14 @@ export function usePDFPreview() {
   const [fileName, setFileName] = useState('document.pdf');
   const [title, setTitle] = useState('Aperçu du document');
   const [isLoading, setIsLoading] = useState(false);
+  const blobUrlRef = useRef<string | null>(null);
+
+  const revokeBlobUrl = () => {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+  };
 
   const openPreview = async (
     generatePDF: () => Promise<{ dataUrl: string; fileName: string }>,
@@ -134,10 +151,28 @@ export function usePDFPreview() {
     setIsLoading(true);
     setIsOpen(true);
     if (previewTitle) setTitle(previewTitle);
-    
+
+    // Clean previous blob URL if any
+    revokeBlobUrl();
+    setPdfDataUrl(null);
+
     try {
       const { dataUrl, fileName: name } = await generatePDF();
-      setPdfDataUrl(dataUrl);
+
+      // Use Blob URL for more reliable rendering (data URLs can be huge and render blank)
+      let previewUrl = dataUrl;
+      if (dataUrl.startsWith('data:application/pdf')) {
+        try {
+          const blob = await fetch(dataUrl).then((r) => r.blob());
+          previewUrl = URL.createObjectURL(blob);
+          blobUrlRef.current = previewUrl;
+        } catch {
+          // Fallback to data URL
+          previewUrl = dataUrl;
+        }
+      }
+
+      setPdfDataUrl(previewUrl);
       setFileName(name);
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -151,6 +186,7 @@ export function usePDFPreview() {
     setIsOpen(false);
     // Clean up after a short delay
     setTimeout(() => {
+      revokeBlobUrl();
       setPdfDataUrl(null);
     }, 300);
   };
