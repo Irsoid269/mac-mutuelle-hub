@@ -60,6 +60,26 @@ export default function Contributions() {
     payment_reference: '',
   });
 
+  // Generate unique payment reference
+  const generatePaymentReference = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `PAY-${year}${month}${day}-${random}`;
+  };
+
+  // Open payment dialog with auto-generated reference
+  const openPaymentDialog = (contribution: any) => {
+    setSelectedContribution(contribution);
+    setPaymentData({
+      paid_amount: String(contribution.amount - contribution.paid_amount),
+      payment_reference: generatePaymentReference(),
+    });
+    setIsPaymentOpen(true);
+  };
+
   const { contributions, contracts, stats, isLoading, createContribution, updatePaymentStatus, getPaymentHistory } =
     useContributionsData(searchTerm, statusFilter);
 
@@ -441,14 +461,7 @@ export default function Contributions() {
                         {contribution.payment_status !== 'paye' && (
                           <Button
                             size="sm"
-                            onClick={() => {
-                              setSelectedContribution(contribution);
-                              setPaymentData({
-                                paid_amount: String(contribution.amount - contribution.paid_amount),
-                                payment_reference: '',
-                              });
-                              setIsPaymentOpen(true);
-                            }}
+                            onClick={() => openPaymentDialog(contribution)}
                           >
                             Payer
                           </Button>
