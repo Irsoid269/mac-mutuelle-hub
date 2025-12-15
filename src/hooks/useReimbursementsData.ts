@@ -191,8 +191,21 @@ export function useReimbursementsData(searchTerm: string = '', statusFilter: str
 
     if (newStatus === 'paye') {
       updateData.paid_at = new Date().toISOString();
+      
+      // Si paidAmount est fourni, l'utiliser, sinon utiliser approved_amount ou claimed_amount
       if (paidAmount !== undefined) {
         updateData.paid_amount = paidAmount;
+      } else {
+        // Récupérer le remboursement pour obtenir le montant
+        const { data: reimbursement } = await supabase
+          .from('reimbursements')
+          .select('approved_amount, claimed_amount')
+          .eq('id', id)
+          .single();
+        
+        if (reimbursement) {
+          updateData.paid_amount = reimbursement.approved_amount || reimbursement.claimed_amount;
+        }
       }
     }
 
