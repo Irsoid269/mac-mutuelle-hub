@@ -341,21 +341,44 @@ export const generateReimbursementPDF = (data: ReimbursementPDFData): void => {
     soumis: COLORS.warning,
     verification: COLORS.primary,
     valide: COLORS.success,
-    paye: [26, 155, 215],
+    paye: [34, 197, 94], // Green for paid
     rejete: COLORS.error,
   };
   
   const statusColor = statusColors[data.status] || COLORS.secondary;
+  const statusLabel = statusLabels[data.status] || data.status;
   
-  // Status badge
+  // Status badge - larger and more prominent
   doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-  doc.roundedRect(20, y, 55, 12, 3, 3, 'F');
+  doc.roundedRect(20, y, 65, 14, 4, 4, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.setTextColor(255, 255, 255);
-  doc.text(statusLabels[data.status] || data.status, 47.5, y + 8, { align: 'center' });
+  doc.text(statusLabel.toUpperCase(), 52.5, y + 9.5, { align: 'center' });
   
-  y += 18;
+  // Add status description based on status
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.text);
+  
+  let statusDescription = '';
+  if (data.status === 'paye') {
+    statusDescription = 'Ce remboursement a été réglé.';
+  } else if (data.status === 'rejete') {
+    statusDescription = 'Cette demande a été rejetée.';
+  } else if (data.status === 'valide') {
+    statusDescription = 'Approuvé, en attente de paiement.';
+  } else if (data.status === 'verification') {
+    statusDescription = 'Dossier en cours d\'analyse.';
+  } else if (data.status === 'soumis') {
+    statusDescription = 'Demande en attente de traitement.';
+  }
+  
+  if (statusDescription) {
+    doc.text(statusDescription, 95, y + 9);
+  }
+  
+  y += 22;
   
   // Dates info
   doc.setFont('helvetica', 'normal');
@@ -1077,4 +1100,222 @@ export const generateFicheSubscriptionPDF = (data: FicheSubscriptionPDFData): vo
   addFooter(doc);
   
   doc.save(`Fiche_Souscription_${data.contract_number}.pdf`);
+};
+
+// Monthly summary PDF interface
+export interface MonthlySummaryPDFData {
+  month: string; // Format: "YYYY-MM"
+  reimbursements: {
+    reimbursement_number: string;
+    insured_name: string;
+    care_type: string;
+    medical_date: string;
+    claimed_amount: number;
+    approved_amount?: number;
+    paid_amount?: number;
+    status: string;
+  }[];
+  stats: {
+    total: number;
+    soumis: number;
+    verification: number;
+    valide: number;
+    paye: number;
+    rejete: number;
+    totalClaimed: number;
+    totalApproved: number;
+    totalPaid: number;
+  };
+}
+
+export const generateMonthlySummaryPDF = (data: MonthlySummaryPDFData): void => {
+  const doc = new jsPDF('landscape');
+  const pageWidth = doc.internal.pageSize.getWidth();
+  
+  // Parse month for display
+  const [year, monthNum] = data.month.split('-');
+  const monthDate = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
+  const monthLabel = format(monthDate, 'MMMM yyyy', { locale: fr });
+  
+  let y = addHeader(doc, 'RÉCAPITULATIF', `Remboursements - ${monthLabel}`);
+  
+  // Period box
+  doc.setFillColor(...COLORS.primary);
+  doc.roundedRect(pageWidth - 100, y, 85, 20, 3, 3, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(255, 255, 255);
+  doc.text('Période', pageWidth - 57.5, y + 7, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text(monthLabel.toUpperCase(), pageWidth - 57.5, y + 15, { align: 'center' });
+  
+  y += 28;
+  
+  // Statistics cards
+  const cardWidth = 42;
+  const cardSpacing = 5;
+  const startX = 15;
+  
+  const statsCards = [
+    { label: 'Total', value: data.stats.total.toString(), color: COLORS.primary },
+    { label: 'Soumis', value: data.stats.soumis.toString(), color: COLORS.warning },
+    { label: 'Vérification', value: data.stats.verification.toString(), color: COLORS.primary },
+    { label: 'Validés', value: data.stats.valide.toString(), color: COLORS.success },
+    { label: 'Payés', value: data.stats.paye.toString(), color: [34, 197, 94] as [number, number, number] },
+    { label: 'Rejetés', value: data.stats.rejete.toString(), color: COLORS.error },
+  ];
+  
+  statsCards.forEach((card, index) => {
+    const x = startX + (cardWidth + cardSpacing) * index;
+    
+    // Card background
+    doc.setFillColor(...COLORS.lightGray);
+    doc.roundedRect(x, y, cardWidth, 22, 2, 2, 'F');
+    
+    // Top accent
+    doc.setFillColor(card.color[0], card.color[1], card.color[2]);
+    doc.rect(x, y, cardWidth, 3, 'F');
+    
+    // Label
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...COLORS.textLight);
+    doc.text(card.label, x + cardWidth / 2, y + 10, { align: 'center' });
+    
+    // Value
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(card.color[0], card.color[1], card.color[2]);
+    doc.text(card.value, x + cardWidth / 2, y + 19, { align: 'center' });
+  });
+  
+  y += 30;
+  
+  // Financial summary
+  const financeStartX = pageWidth - 95;
+  doc.setFillColor(...COLORS.lightGray);
+  doc.roundedRect(financeStartX, y - 25, 80, 22, 2, 2, 'F');
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('Total payé ce mois', financeStartX + 40, y - 18, { align: 'center' });
+  
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(...COLORS.success);
+  doc.text(formatCurrency(data.stats.totalPaid), financeStartX + 40, y - 9, { align: 'center' });
+  
+  y += 5;
+  
+  // Reimbursements table
+  y = addSectionTitle(doc, 'Liste des remboursements', y);
+  
+  const statusLabels: Record<string, string> = {
+    soumis: 'Soumis',
+    verification: 'Vérification',
+    valide: 'Validé',
+    paye: 'Payé',
+    rejete: 'Rejeté',
+  };
+  
+  const careTypeLabels: Record<string, string> = {
+    consultation: 'Consultation',
+    hospitalisation: 'Hospitalisation',
+    pharmacie: 'Pharmacie',
+    analyses: 'Analyses',
+    radiologie: 'Radiologie',
+    autre: 'Autre',
+  };
+  
+  const tableData = data.reimbursements.map(r => [
+    r.reimbursement_number,
+    r.insured_name,
+    careTypeLabels[r.care_type] || r.care_type,
+    formatDate(r.medical_date),
+    formatCurrency(r.claimed_amount),
+    r.approved_amount != null ? formatCurrency(r.approved_amount) : '—',
+    r.paid_amount != null ? formatCurrency(r.paid_amount) : '—',
+    statusLabels[r.status] || r.status,
+  ]);
+  
+  autoTable(doc, {
+    startY: y,
+    head: [['N° Dossier', 'Assuré', 'Type de soin', 'Date soins', 'Réclamé', 'Approuvé', 'Payé', 'Statut']],
+    body: tableData,
+    theme: 'striped',
+    headStyles: {
+      fillColor: COLORS.primary,
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 9,
+    },
+    bodyStyles: {
+      fontSize: 8,
+    },
+    alternateRowStyles: {
+      fillColor: COLORS.lightGray,
+    },
+    styles: {
+      cellPadding: 4,
+      lineColor: COLORS.mediumGray,
+      lineWidth: 0.1,
+    },
+    columnStyles: {
+      0: { cellWidth: 35 },
+      1: { cellWidth: 45 },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 25 },
+      4: { cellWidth: 30, halign: 'right' },
+      5: { cellWidth: 30, halign: 'right' },
+      6: { cellWidth: 30, halign: 'right' },
+      7: { cellWidth: 25, halign: 'center' },
+    },
+    margin: { left: 15, right: 15 },
+    didParseCell: (hookData) => {
+      // Color status cells
+      if (hookData.section === 'body' && hookData.column.index === 7) {
+        const cellValue = hookData.cell.raw as string;
+        if (cellValue === 'Payé') {
+          hookData.cell.styles.textColor = [34, 197, 94];
+          hookData.cell.styles.fontStyle = 'bold';
+        } else if (cellValue === 'Rejeté') {
+          hookData.cell.styles.textColor = COLORS.error as any;
+          hookData.cell.styles.fontStyle = 'bold';
+        } else if (cellValue === 'Validé') {
+          hookData.cell.styles.textColor = COLORS.success as any;
+        }
+      }
+    },
+  });
+  
+  y = getLastTableY(doc) + 15;
+  
+  // Totals summary
+  doc.setFillColor(...COLORS.lightGray);
+  doc.roundedRect(pageWidth - 160, y, 145, 30, 3, 3, 'F');
+  
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.text);
+  doc.text('TOTAUX', pageWidth - 150, y + 10);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('Réclamé:', pageWidth - 120, y + 10);
+  doc.text('Approuvé:', pageWidth - 120, y + 18);
+  doc.text('Payé:', pageWidth - 120, y + 26);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...COLORS.text);
+  doc.text(formatCurrency(data.stats.totalClaimed), pageWidth - 80, y + 10);
+  doc.text(formatCurrency(data.stats.totalApproved), pageWidth - 80, y + 18);
+  doc.setTextColor(...COLORS.success);
+  doc.text(formatCurrency(data.stats.totalPaid), pageWidth - 80, y + 26);
+  
+  addFooter(doc);
+  
+  doc.save(`Recapitulatif_Remboursements_${data.month}.pdf`);
 };

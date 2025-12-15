@@ -44,9 +44,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { generateReimbursementPDF, type ReimbursementPDFData } from '@/lib/pdfGenerator';
+import { generateReimbursementPDF, generateMonthlySummaryPDF, type ReimbursementPDFData, type MonthlySummaryPDFData } from '@/lib/pdfGenerator';
 
 export default function Reimbursements() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -155,6 +155,41 @@ export default function Reimbursements() {
     generateReimbursementPDF(pdfData);
     toast.success('PDF généré', {
       description: 'La fiche de remboursement a été téléchargée.',
+    });
+  };
+
+  const handleGenerateMonthlySummary = () => {
+    const now = new Date();
+    const currentMonth = format(now, 'yyyy-MM');
+    
+    // Calculate totals
+    const totalClaimed = reimbursements.reduce((sum, r) => sum + r.claimed_amount, 0);
+    const totalApproved = reimbursements.reduce((sum, r) => sum + (r.approved_amount || 0), 0);
+    const totalPaid = reimbursements.reduce((sum, r) => sum + (r.paid_amount || 0), 0);
+    
+    const summaryData: MonthlySummaryPDFData = {
+      month: currentMonth,
+      reimbursements: reimbursements.map(r => ({
+        reimbursement_number: r.reimbursement_number,
+        insured_name: `${r.insured?.first_name || ''} ${r.insured?.last_name || ''}`,
+        care_type: r.care_type,
+        medical_date: r.medical_date,
+        claimed_amount: r.claimed_amount,
+        approved_amount: r.approved_amount,
+        paid_amount: r.paid_amount,
+        status: r.status,
+      })),
+      stats: {
+        ...stats,
+        totalClaimed,
+        totalApproved,
+        totalPaid,
+      },
+    };
+    
+    generateMonthlySummaryPDF(summaryData);
+    toast.success('Récapitulatif généré', {
+      description: 'Le récapitulatif mensuel a été téléchargé.',
     });
   };
 
@@ -371,9 +406,9 @@ export default function Reimbursements() {
             <SelectItem value="rejete">Rejeté</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" className="gap-2" onClick={handleGenerateMonthlySummary}>
           <Download className="w-4 h-4" />
-          Exporter
+          Récapitulatif mensuel
         </Button>
       </div>
 
