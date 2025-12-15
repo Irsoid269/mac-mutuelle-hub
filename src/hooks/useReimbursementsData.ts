@@ -179,16 +179,21 @@ export function useReimbursementsData(searchTerm: string = '', statusFilter: str
     return data.publicUrl;
   };
 
-  const updateStatus = async (id: string, newStatus: string, paidAmount?: number) => {
+  const updateStatus = async (id: string, newStatus: string, approvedAmount?: number, paidAmount?: number) => {
     const updateData: any = { status: newStatus };
 
     if (newStatus === 'valide') {
       updateData.validated_at = new Date().toISOString();
+      if (approvedAmount !== undefined) {
+        updateData.approved_amount = approvedAmount;
+      }
     }
 
-    if (newStatus === 'paye' && paidAmount !== undefined) {
+    if (newStatus === 'paye') {
       updateData.paid_at = new Date().toISOString();
-      updateData.paid_amount = paidAmount;
+      if (paidAmount !== undefined) {
+        updateData.paid_amount = paidAmount;
+      }
     }
 
     const { error } = await supabase
