@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Download, ZoomIn, ZoomOut, Loader2 } from 'lucide-react';
+import { Document, Page, pdfjs } from 'react-pdf';
+import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -8,6 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+
+pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
 interface PDFPreviewProps {
   isOpen: boolean;
