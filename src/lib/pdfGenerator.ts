@@ -36,7 +36,43 @@ const formatDate = (date: string | Date): string => {
   return format(new Date(date), 'dd/MM/yyyy', { locale: fr });
 };
 
-// Professional header with logo
+// Store logo as base64 - will be loaded dynamically
+let logoBase64: string | null = null;
+let logoLoaded = false;
+
+// Pre-load logo - call this once at app startup or before generating PDFs
+export const preloadLogo = async (): Promise<void> => {
+  if (logoLoaded) return;
+  
+  try {
+    const response = await fetch('/mac-logo.png');
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        logoBase64 = reader.result as string;
+        logoLoaded = true;
+        resolve();
+      };
+      reader.onerror = () => {
+        logoLoaded = true;
+        resolve();
+      };
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    logoLoaded = true;
+  }
+};
+
+// Ensure logo is loaded before generating PDF
+const ensureLogo = async (): Promise<void> => {
+  if (!logoLoaded) {
+    await preloadLogo();
+  }
+};
+
+// Professional header with logo image
 const addHeader = (doc: jsPDF, title: string, subtitle?: string): number => {
   const pageWidth = doc.internal.pageSize.getWidth();
   
@@ -52,22 +88,36 @@ const addHeader = (doc: jsPDF, title: string, subtitle?: string): number => {
   doc.setFillColor(...COLORS.primary);
   doc.rect(0, 42, pageWidth, 2, 'F');
   
-  // Company name styled like logo
+  // Add logo if available
+  if (logoBase64) {
+    try {
+      doc.addImage(logoBase64, 'PNG', 10, 8, 32, 28);
+    } catch {
+      // Fallback to text if image fails
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(26);
+      doc.setTextColor(...COLORS.primary);
+      doc.text('MAC', 15, 24);
+    }
+  } else {
+    // Fallback to text
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(26);
+    doc.setTextColor(...COLORS.primary);
+    doc.text('MAC', 15, 24);
+  }
+  
+  // Company name and tagline next to logo
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(26);
-  doc.setTextColor(...COLORS.primary);
-  doc.text('MAC', 15, 24);
-  
   doc.setFontSize(14);
-  doc.setTextColor(...COLORS.secondary);
-  doc.text('ASSURANCES', 48, 24);
+  doc.setTextColor(...COLORS.primary);
+  doc.text('MAC ASSURANCES', 48, 18);
   
-  // Tagline
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(...COLORS.textLight);
-  doc.text('Mutuelle d\'Assurance des Comores', 15, 32);
-  doc.text('Le contrat de confiance', 15, 38);
+  doc.text("Mutuelle d'Assurance des Comores", 48, 26);
+  doc.text('Le contrat de confiance', 48, 33);
   
   // Document title box on the right
   const titleBoxWidth = 80;
@@ -198,7 +248,8 @@ export interface ReimbursementPDFData {
   paid_at?: string;
 }
 
-export const generateReimbursementPDF = (data: ReimbursementPDFData): void => {
+export const generateReimbursementPDF = async (data: ReimbursementPDFData): Promise<void> => {
+  await ensureLogo();
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   
@@ -441,7 +492,8 @@ export interface SubscriptionPDFData {
   }[];
 }
 
-export const generateSubscriptionPDF = (data: SubscriptionPDFData): void => {
+export const generateSubscriptionPDF = async (data: SubscriptionPDFData): Promise<void> => {
+  await ensureLogo();
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   
@@ -694,7 +746,8 @@ export interface FicheSubscriptionPDFData {
   signature_date?: string;
 }
 
-export const generateFicheSubscriptionPDF = (data: FicheSubscriptionPDFData): void => {
+export const generateFicheSubscriptionPDF = async (data: FicheSubscriptionPDFData): Promise<void> => {
+  await ensureLogo();
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -713,22 +766,39 @@ export const generateFicheSubscriptionPDF = (data: FicheSubscriptionPDFData): vo
   doc.setFillColor(...COLORS.primary);
   doc.rect(0, 50, pageWidth, 2, 'F');
   
-  // Company name styled like logo
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(28);
-  doc.setTextColor(...COLORS.primary);
-  doc.text('MAC', 15, 28);
+  // Add logo if available
+  if (logoBase64) {
+    try {
+      doc.addImage(logoBase64, 'PNG', 10, 10, 35, 32);
+    } catch {
+      // Fallback to text
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(28);
+      doc.setTextColor(...COLORS.primary);
+      doc.text('MAC', 15, 28);
+    }
+  } else {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(28);
+    doc.setTextColor(...COLORS.primary);
+    doc.text('MAC', 15, 28);
+  }
   
+  // Company name next to logo
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
+  doc.setTextColor(...COLORS.primary);
+  doc.text('MAC ASSURANCES', 52, 22);
+  
+  doc.setFontSize(14);
   doc.setTextColor(...COLORS.secondary);
-  doc.text('ASSURANCES', 52, 28);
   
   // Tagline
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(...COLORS.textLight);
-  doc.text('Mutuelle d\'Assurance des Comores', 15, 38);
-  doc.text('Avenue de Strasbourg, Moroni-Bacha', 15, 44);
+  doc.text("Mutuelle d'Assurance des Comores", 52, 30);
+  doc.text('Avenue de Strasbourg, Moroni-Bacha', 52, 38);
   
   // Contact info (right side)
   doc.setTextColor(...COLORS.text);
@@ -1128,7 +1198,8 @@ export interface MonthlySummaryPDFData {
   };
 }
 
-export const generateMonthlySummaryPDF = (data: MonthlySummaryPDFData): void => {
+export const generateMonthlySummaryPDF = async (data: MonthlySummaryPDFData): Promise<void> => {
+  await ensureLogo();
   const doc = new jsPDF('landscape');
   const pageWidth = doc.internal.pageSize.getWidth();
   
@@ -1340,7 +1411,8 @@ export interface SubscriptionSummaryPDFData {
   };
 }
 
-export const generateSubscriptionSummaryPDF = (data: SubscriptionSummaryPDFData): void => {
+export const generateSubscriptionSummaryPDF = async (data: SubscriptionSummaryPDFData): Promise<void> => {
+  await ensureLogo();
   const doc = new jsPDF('landscape');
   const pageWidth = doc.internal.pageSize.getWidth();
   
@@ -1503,7 +1575,8 @@ export interface InsuredSummaryPDFData {
   };
 }
 
-export const generateInsuredSummaryPDF = (data: InsuredSummaryPDFData): void => {
+export const generateInsuredSummaryPDF = async (data: InsuredSummaryPDFData): Promise<void> => {
+  await ensureLogo();
   const doc = new jsPDF('landscape');
   const pageWidth = doc.internal.pageSize.getWidth();
   
