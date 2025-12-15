@@ -30,12 +30,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format, differenceInYears } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { generateBeneficiaryCardPDF } from '@/lib/pdfGenerator';
-import { PDFPreview, usePDFPreview } from '@/components/ui/pdf-preview';
+
 
 export default function Beneficiaries() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const pdfPreview = usePDFPreview();
+  
 
   // Form state
   const [formData, setFormData] = useState({
@@ -72,13 +72,8 @@ export default function Beneficiaries() {
       } : undefined,
     };
 
-    pdfPreview.openPreview(
-      async () => {
-        const dataUrl = await generateBeneficiaryCardPDF(cardData);
-        return { dataUrl, fileName: `Carte_AyantDroit_${beneficiary.last_name}_${beneficiary.first_name}.pdf` };
-      },
-      `Carte d'assuré - ${beneficiary.first_name} ${beneficiary.last_name}`
-    );
+    await generateBeneficiaryCardPDF(cardData);
+    toast({ title: 'PDF généré', description: "La carte d'ayant droit a été téléchargée." });
   };
 
   const handleSave = async () => {
@@ -394,15 +389,6 @@ export default function Beneficiaries() {
         </div>
       </div>
 
-      {/* PDF Preview */}
-      <PDFPreview
-        isOpen={pdfPreview.isOpen}
-        onClose={pdfPreview.closePreview}
-        pdfDataUrl={pdfPreview.pdfDataUrl}
-        fileName={pdfPreview.fileName}
-        title={pdfPreview.title}
-        isLoading={pdfPreview.isLoading}
-      />
     </div>
   );
 }
