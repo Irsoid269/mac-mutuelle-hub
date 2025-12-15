@@ -77,7 +77,7 @@ export function SyncStatusIndicator() {
           </TooltipContent>
         </Tooltip>
 
-        <PopoverContent className="w-72" align="end">
+        <PopoverContent className="w-72 z-50 bg-popover border shadow-lg" align="end" sideOffset={8}>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h4 className="font-medium">État de synchronisation</h4>
