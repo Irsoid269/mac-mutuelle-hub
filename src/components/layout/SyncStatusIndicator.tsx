@@ -77,77 +77,85 @@ export function SyncStatusIndicator() {
           </TooltipContent>
         </Tooltip>
 
-        <PopoverContent className="w-72 z-50 bg-popover border shadow-lg" align="end" sideOffset={8}>
+        <PopoverContent className="w-80 z-50 bg-card border border-border shadow-xl" align="end" sideOffset={8}>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h4 className="font-medium">État de synchronisation</h4>
+              <h4 className="font-semibold text-foreground">État de synchronisation</h4>
               {online ? (
-                <Wifi className="h-4 w-4 text-emerald-500" />
+                <Wifi className="h-5 w-5 text-emerald-500" />
               ) : (
-                <WifiOff className="h-4 w-4 text-destructive" />
+                <WifiOff className="h-5 w-5 text-destructive" />
               )}
             </div>
 
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between py-1 border-b border-border/50">
                 <span className="text-muted-foreground">Connexion</span>
-                <span className={online ? 'text-emerald-500' : 'text-destructive'}>
+                <span className={cn(
+                  "font-medium",
+                  online ? 'text-emerald-600' : 'text-destructive'
+                )}>
                   {online ? 'En ligne' : 'Hors ligne'}
                 </span>
               </div>
               
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between py-1 border-b border-border/50">
                 <span className="text-muted-foreground">Modifications en attente</span>
-                <span className={pendingCount > 0 ? 'text-amber-500 font-medium' : ''}>
+                <span className={cn(
+                  "font-medium",
+                  pendingCount > 0 ? 'text-amber-600' : 'text-foreground'
+                )}>
                   {pendingCount}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between py-1">
                 <span className="text-muted-foreground">Statut</span>
                 <span className={cn(
+                  "font-medium",
                   syncing && 'text-primary',
-                  !online && 'text-destructive'
+                  !online && 'text-destructive',
+                  online && !syncing && 'text-emerald-600'
                 )}>
-                  {syncing ? 'Synchronisation...' : online ? 'Prêt' : 'En attente de connexion'}
+                  {syncing ? 'Synchronisation...' : online ? 'Prêt' : 'En attente'}
                 </span>
               </div>
             </div>
 
             {!online && pendingCount > 0 && (
-              <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-xs text-amber-600">
+              <div className="flex items-start gap-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 p-3 text-xs text-amber-700 dark:text-amber-400">
                 <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                 <span>
-                  Vos modifications seront synchronisées automatiquement dès que vous serez connecté à Internet.
+                  Vos modifications seront synchronisées automatiquement dès que vous serez connecté.
                 </span>
               </div>
             )}
 
-            <div className="flex gap-2 pt-2 border-t">
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1"
                 onClick={forceSync}
                 disabled={!online || syncing}
+                className="w-full"
               >
-                <RefreshCw className={cn('h-3 w-3 mr-2', syncing && 'animate-spin')} />
+                <RefreshCw className={cn('h-3 w-3 mr-1.5', syncing && 'animate-spin')} />
                 Synchroniser
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1"
                 onClick={forceFullSync}
                 disabled={!online || syncing}
+                className="w-full"
               >
-                <Cloud className="h-3 w-3 mr-2" />
-                Tout recharger
+                <Cloud className="h-3 w-3 mr-1.5" />
+                Recharger
               </Button>
             </div>
 
-            <p className="text-[10px] text-muted-foreground text-center">
-              Les données sont stockées localement et synchronisées avec le serveur.
+            <p className="text-[10px] text-muted-foreground text-center pt-1">
+              Données stockées localement et synchronisées avec le serveur.
             </p>
           </div>
         </PopoverContent>
