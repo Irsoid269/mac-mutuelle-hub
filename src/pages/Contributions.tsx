@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Check, Clock, AlertCircle, CreditCard, Receipt } from 'lucide-react';
+import { Plus, Search, Check, Clock, AlertCircle, CreditCard, Receipt, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useContributionsData } from '@/hooks/useContributionsData';
@@ -23,6 +23,8 @@ import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { generateContributionReceiptPDF, ContributionReceiptPDFData } from '@/lib/pdfGenerator';
+import { PDFPreview, usePDFPreview } from '@/components/ui/pdf-preview';
 
 export default function Contributions() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,6 +32,7 @@ export default function Contributions() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [selectedContribution, setSelectedContribution] = useState<any>(null);
+  const pdfPreview = usePDFPreview();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -104,6 +107,31 @@ export default function Contributions() {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleDownloadReceipt = (contribution: any) => {
+    const pdfData: ContributionReceiptPDFData = {
+      contract: {
+        contract_number: contribution.contract?.contract_number || 'N/A',
+        raison_sociale: contribution.contract?.raison_sociale || 'N/A',
+        client_code: contribution.contract?.client_code || 'N/A',
+      },
+      period_start: contribution.period_start,
+      period_end: contribution.period_end,
+      amount: contribution.amount,
+      paid_amount: contribution.paid_amount,
+      payment_date: contribution.payment_date,
+      payment_reference: contribution.payment_reference,
+      payment_status: contribution.payment_status,
+    };
+
+    pdfPreview.openPreview(
+      async () => {
+        const result = await generateContributionReceiptPDF(pdfData, { preview: true });
+        return result as { dataUrl: string; fileName: string };
+      },
+      `Reçu de paiement - ${contribution.contract?.contract_number || 'N/A'}`
+    );
   };
 
   const getStatusBadge = (status: string) => {
@@ -361,21 +389,33 @@ export default function Contributions() {
                       {contribution.payment_reference || '-'}
                     </td>
                     <td className="text-right">
-                      {contribution.payment_status !== 'paye' && (
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setSelectedContribution(contribution);
-                            setPaymentData({
-                              paid_amount: String(contribution.amount - contribution.paid_amount),
-                              payment_reference: '',
-                            });
-                            setIsPaymentOpen(true);
-                          }}
-                        >
-                          Payer
-                        </Button>
-                      )}
+                      <div className="flex items-center justify-end gap-2">
+                        {(contribution.payment_status === 'paye' || contribution.payment_status === 'partiel') && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDownloadReceipt(contribution)}
+                            title="Télécharger le reçu"
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {contribution.payment_status !== 'paye' && (
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setSelectedContribution(contribution);
+                              setPaymentData({
+                                paid_amount: String(contribution.amount - contribution.paid_amount),
+                                payment_reference: '',
+                              });
+                              setIsPaymentOpen(true);
+                            }}
+                          >
+                            Payer
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -437,6 +477,16 @@ export default function Contributions() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* PDF Preview */}
+      <PDFPreview
+        isOpen={pdfPreview.isOpen}
+        onClose={pdfPreview.closePreview}
+        pdfDataUrl={pdfPreview.pdfDataUrl}
+        fileName={pdfPreview.fileName}
+        title={pdfPreview.title}
+        isLoading={pdfPreview.isLoading}
+      />
     </div>
   );
 }
