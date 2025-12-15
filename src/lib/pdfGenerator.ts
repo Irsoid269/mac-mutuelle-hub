@@ -1764,3 +1764,169 @@ export const generateInsuredSummaryPDF = async (
   
   doc.save(fileName);
 };
+
+// Generate contribution receipt PDF
+export interface ContributionReceiptPDFData {
+  contract: {
+    contract_number: string;
+    raison_sociale: string;
+    client_code: string;
+  };
+  period_start: string;
+  period_end: string;
+  amount: number;
+  paid_amount: number;
+  payment_date: string | null;
+  payment_reference: string | null;
+  payment_status: string;
+}
+
+export const generateContributionReceiptPDF = async (
+  data: ContributionReceiptPDFData,
+  options: { preview?: boolean } = {}
+): Promise<{ dataUrl: string; fileName: string } | void> => {
+  await ensureLogo();
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  
+  let y = addHeader(doc, 'REÇU', 'DE PAIEMENT');
+  
+  // Receipt number box
+  const receiptNumber = `REC-${format(new Date(), 'yyyyMMdd')}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+  doc.setFillColor(...COLORS.primary);
+  doc.roundedRect(pageWidth - 85, y, 70, 22, 3, 3, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text('N° Reçu', pageWidth - 50, y + 8, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text(receiptNumber, pageWidth - 50, y + 17, { align: 'center' });
+  
+  y += 32;
+  
+  const col1 = 20;
+  const col2 = pageWidth / 2 + 10;
+  
+  // Contract information
+  y = addSectionTitle(doc, 'Informations du contrat', y);
+  
+  addInfoRow(doc, 'Raison sociale', data.contract.raison_sociale, col1, y, 35);
+  addInfoRow(doc, 'N° Contrat', data.contract.contract_number, col2, y, 30);
+  
+  y += 8;
+  addInfoRow(doc, 'Code Client', data.contract.client_code, col1, y, 35);
+  
+  y += 15;
+  
+  // Period information
+  y = addSectionTitle(doc, 'Période de cotisation', y);
+  
+  addInfoRow(doc, 'Début', formatDate(data.period_start), col1, y, 35);
+  addInfoRow(doc, 'Fin', formatDate(data.period_end), col2, y, 30);
+  
+  y += 15;
+  
+  // Payment details
+  y = addSectionTitle(doc, 'Détails du paiement', y);
+  
+  // Payment table
+  autoTable(doc, {
+    startY: y,
+    head: [['Description', 'Montant']],
+    body: [
+      ['Montant de la cotisation', formatCurrency(data.amount)],
+      ['Montant payé', formatCurrency(data.paid_amount)],
+      ['Reste à payer', formatCurrency(Math.max(0, data.amount - data.paid_amount))],
+    ],
+    theme: 'plain',
+    headStyles: {
+      fillColor: COLORS.primary,
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 10,
+    },
+    bodyStyles: {
+      fontSize: 10,
+    },
+    alternateRowStyles: {
+      fillColor: COLORS.lightGray,
+    },
+    styles: {
+      cellPadding: 6,
+      lineColor: COLORS.mediumGray,
+      lineWidth: 0.1,
+    },
+    columnStyles: {
+      0: { cellWidth: 100, fontStyle: 'normal' },
+      1: { cellWidth: 60, halign: 'right', fontStyle: 'bold' },
+    },
+    margin: { left: 20, right: 20 },
+  });
+  
+  y = getLastTableY(doc) + 15;
+  
+  // Payment info
+  if (data.payment_reference) {
+    addInfoRow(doc, 'Référence de paiement', data.payment_reference, col1, y, 50);
+    y += 8;
+  }
+  if (data.payment_date) {
+    addInfoRow(doc, 'Date de paiement', formatDate(data.payment_date), col1, y, 50);
+  }
+  
+  y += 20;
+  
+  // Status badge
+  const statusLabels: Record<string, string> = {
+    paye: 'PAYÉ',
+    partiel: 'PARTIEL',
+    en_attente: 'EN ATTENTE',
+  };
+  
+  const statusColors: Record<string, [number, number, number]> = {
+    paye: COLORS.success,
+    partiel: COLORS.warning,
+    en_attente: COLORS.secondary,
+  };
+  
+  const statusLabel = statusLabels[data.payment_status] || data.payment_status.toUpperCase();
+  const statusColor = statusColors[data.payment_status] || COLORS.secondary;
+  
+  doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+  doc.roundedRect(pageWidth / 2 - 35, y, 70, 16, 4, 4, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(255, 255, 255);
+  doc.text(statusLabel, pageWidth / 2, y + 11, { align: 'center' });
+  
+  y += 30;
+  
+  // Signature section
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.text);
+  doc.text('Ce reçu atteste du paiement effectué pour la cotisation mentionnée ci-dessus.', 20, y);
+  
+  y += 15;
+  
+  // Signature box
+  doc.setDrawColor(...COLORS.mediumGray);
+  doc.setLineWidth(0.5);
+  doc.rect(pageWidth - 90, y, 70, 30);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('Cachet et signature', pageWidth - 55, y + 35, { align: 'center' });
+  
+  addFooter(doc);
+  
+  const fileName = `Recu_${data.contract.contract_number}_${format(new Date(data.period_start), 'yyyyMM')}.pdf`;
+  
+  if (options.preview) {
+    const dataUrl = doc.output('dataurlstring');
+    return { dataUrl, fileName };
+  }
+  
+  doc.save(fileName);
+};
