@@ -248,7 +248,10 @@ export interface ReimbursementPDFData {
   paid_at?: string;
 }
 
-export const generateReimbursementPDF = async (data: ReimbursementPDFData): Promise<void> => {
+export const generateReimbursementPDF = async (
+  data: ReimbursementPDFData,
+  options: { preview?: boolean } = {}
+): Promise<{ dataUrl: string; fileName: string } | void> => {
   await ensureLogo();
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -457,7 +460,14 @@ export const generateReimbursementPDF = async (data: ReimbursementPDFData): Prom
   
   addFooter(doc);
   
-  doc.save(`Remboursement_${data.reimbursement_number}.pdf`);
+  const fileName = `Remboursement_${data.reimbursement_number}.pdf`;
+  
+  if (options.preview) {
+    const dataUrl = doc.output('dataurlstring');
+    return { dataUrl, fileName };
+  }
+  
+  doc.save(fileName);
 };
 
 // Generate subscription PDF
@@ -492,7 +502,10 @@ export interface SubscriptionPDFData {
   }[];
 }
 
-export const generateSubscriptionPDF = async (data: SubscriptionPDFData): Promise<void> => {
+export const generateSubscriptionPDF = async (
+  data: SubscriptionPDFData,
+  options: { preview?: boolean } = {}
+): Promise<{ dataUrl: string; fileName: string } | void> => {
   await ensureLogo();
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -674,7 +687,14 @@ export const generateSubscriptionPDF = async (data: SubscriptionPDFData): Promis
   
   addFooter(doc);
   
-  doc.save(`Souscription_${data.contract_number}.pdf`);
+  const fileName = `Souscription_${data.contract_number}.pdf`;
+  
+  if (options.preview) {
+    const dataUrl = doc.output('dataurlstring');
+    return { dataUrl, fileName };
+  }
+  
+  doc.save(fileName);
 };
 
 // ================== FICHE DE SOUSCRIPTION FAMILIALE ==================
@@ -746,7 +766,10 @@ export interface FicheSubscriptionPDFData {
   signature_date?: string;
 }
 
-export const generateFicheSubscriptionPDF = async (data: FicheSubscriptionPDFData): Promise<void> => {
+export const generateFicheSubscriptionPDF = async (
+  data: FicheSubscriptionPDFData,
+  options: { preview?: boolean } = {}
+): Promise<{ dataUrl: string; fileName: string } | void> => {
   await ensureLogo();
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -1169,7 +1192,14 @@ export const generateFicheSubscriptionPDF = async (data: FicheSubscriptionPDFDat
   
   addFooter(doc);
   
-  doc.save(`Fiche_Souscription_${data.contract_number}.pdf`);
+  const fileName = `Fiche_Souscription_${data.contract_number}.pdf`;
+  
+  if (options.preview) {
+    const dataUrl = doc.output('dataurlstring');
+    return { dataUrl, fileName };
+  }
+  
+  doc.save(fileName);
 };
 
 // Monthly summary PDF interface
@@ -1198,7 +1228,10 @@ export interface MonthlySummaryPDFData {
   };
 }
 
-export const generateMonthlySummaryPDF = async (data: MonthlySummaryPDFData): Promise<void> => {
+export const generateMonthlySummaryPDF = async (
+  data: MonthlySummaryPDFData,
+  options: { preview?: boolean } = {}
+): Promise<{ dataUrl: string; fileName: string } | void> => {
   await ensureLogo();
   const doc = new jsPDF('landscape');
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -1388,7 +1421,14 @@ export const generateMonthlySummaryPDF = async (data: MonthlySummaryPDFData): Pr
   
   addFooter(doc);
   
-  doc.save(`Recapitulatif_Remboursements_${data.month}.pdf`);
+  const fileName = `Recapitulatif_Remboursements_${data.month}.pdf`;
+  
+  if (options.preview) {
+    const dataUrl = doc.output('dataurlstring');
+    return { dataUrl, fileName };
+  }
+  
+  doc.save(fileName);
 };
 
 // ===== RÉCAPITULATIF DES SOUSCRIPTIONS =====
@@ -1411,7 +1451,10 @@ export interface SubscriptionSummaryPDFData {
   };
 }
 
-export const generateSubscriptionSummaryPDF = async (data: SubscriptionSummaryPDFData): Promise<void> => {
+export const generateSubscriptionSummaryPDF = async (
+  data: SubscriptionSummaryPDFData,
+  options: { preview?: boolean } = {}
+): Promise<{ dataUrl: string; fileName: string } | void> => {
   await ensureLogo();
   const doc = new jsPDF('landscape');
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -1547,7 +1590,14 @@ export const generateSubscriptionSummaryPDF = async (data: SubscriptionSummaryPD
   
   addFooter(doc);
   
-  doc.save(`Recapitulatif_Souscriptions_${format(today, 'yyyy-MM-dd')}.pdf`);
+  const fileName = `Recapitulatif_Souscriptions_${format(today, 'yyyy-MM-dd')}.pdf`;
+  
+  if (options.preview) {
+    const dataUrl = doc.output('dataurlstring');
+    return { dataUrl, fileName };
+  }
+  
+  doc.save(fileName);
 };
 
 // ===== RÉCAPITULATIF DES ASSURÉS =====
@@ -1575,7 +1625,10 @@ export interface InsuredSummaryPDFData {
   };
 }
 
-export const generateInsuredSummaryPDF = async (data: InsuredSummaryPDFData): Promise<void> => {
+export const generateInsuredSummaryPDF = async (
+  data: InsuredSummaryPDFData,
+  options: { preview?: boolean } = {}
+): Promise<{ dataUrl: string; fileName: string } | void> => {
   await ensureLogo();
   const doc = new jsPDF('landscape');
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -1702,5 +1755,12 @@ export const generateInsuredSummaryPDF = async (data: InsuredSummaryPDFData): Pr
   
   addFooter(doc);
   
-  doc.save(`Recapitulatif_Assures_${format(today, 'yyyy-MM-dd')}.pdf`);
+  const fileName = `Recapitulatif_Assures_${format(today, 'yyyy-MM-dd')}.pdf`;
+  
+  if (options.preview) {
+    const dataUrl = doc.output('dataurlstring');
+    return { dataUrl, fileName };
+  }
+  
+  doc.save(fileName);
 };

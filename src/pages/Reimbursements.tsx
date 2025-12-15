@@ -43,6 +43,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { PDFPreview, usePDFPreview } from '@/components/ui/pdf-preview';
 import { useReimbursementsData } from '@/hooks/useReimbursementsData';
 import { useProvidersData } from '@/hooks/useProvidersData';
 import { useReimbursementCeilings } from '@/hooks/useReimbursementCeilings';
@@ -92,6 +93,7 @@ export default function Reimbursements() {
 
   const { providers, getProvidersByType } = useProvidersData();
   const { calculateApprovedAmount, getCeilingForCareType } = useReimbursementCeilings();
+  const pdfPreview = usePDFPreview();
 
   // Update filtered providers when care type changes
   useEffect(() => {
@@ -188,7 +190,7 @@ export default function Reimbursements() {
     }
   };
 
-  const handleGeneratePDF = (reimbursement: any) => {
+  const handlePreviewPDF = (reimbursement: any) => {
     const pdfData: ReimbursementPDFData = {
       reimbursement_number: reimbursement.reimbursement_number,
       insured: reimbursement.insured,
@@ -205,10 +207,13 @@ export default function Reimbursements() {
       paid_at: reimbursement.paid_at,
     };
     
-    generateReimbursementPDF(pdfData);
-    toast.success('PDF généré', {
-      description: 'La fiche de remboursement a été téléchargée.',
-    });
+    pdfPreview.openPreview(
+      async () => {
+        const result = await generateReimbursementPDF(pdfData, { preview: true });
+        return result as { dataUrl: string; fileName: string };
+      },
+      `Fiche de remboursement - ${reimbursement.reimbursement_number}`
+    );
   };
 
   const handleGenerateMonthlySummary = () => {
@@ -580,9 +585,9 @@ export default function Reimbursements() {
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="gap-2" onClick={() => handleGeneratePDF(r)}>
-                            <FileText className="w-4 h-4" />
-                            Générer PDF
+                          <DropdownMenuItem className="gap-2" onClick={() => handlePreviewPDF(r)}>
+                            <Eye className="w-4 h-4" />
+                            Aperçu PDF
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -727,9 +732,9 @@ export default function Reimbursements() {
               </div>
 
               <div className="flex justify-end gap-3">
-                <Button variant="outline" className="gap-2" onClick={() => handleGeneratePDF(selectedReimbursement)}>
-                  <Download className="w-4 h-4" />
-                  Télécharger fiche
+                <Button variant="outline" className="gap-2" onClick={() => handlePreviewPDF(selectedReimbursement)}>
+                  <Eye className="w-4 h-4" />
+                  Aperçu PDF
                 </Button>
               </div>
             </div>
@@ -803,6 +808,16 @@ export default function Reimbursements() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* PDF Preview */}
+      <PDFPreview
+        isOpen={pdfPreview.isOpen}
+        onClose={pdfPreview.closePreview}
+        pdfDataUrl={pdfPreview.pdfDataUrl}
+        fileName={pdfPreview.fileName}
+        title={pdfPreview.title}
+        isLoading={pdfPreview.isLoading}
+      />
     </div>
   );
 }
