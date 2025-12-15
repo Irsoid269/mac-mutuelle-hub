@@ -57,42 +57,39 @@ export default function Insured() {
   };
 
   const handleGenerateSummaryPDF = () => {
-    try {
-      const stats = {
-        total: insured.length,
-        male: insured.filter(i => i.gender === 'M').length,
-        female: insured.filter(i => i.gender === 'F').length,
-        with_paid_contribution: insured.filter(i => i.has_paid_contribution).length,
-        without_paid_contribution: insured.filter(i => !i.has_paid_contribution).length,
-      };
+    pdfPreview.openPreview(
+      async () => {
+        const summaryStats = {
+          total: insured.length,
+          male: insured.filter(i => i.gender === 'M').length,
+          female: insured.filter(i => i.gender === 'F').length,
+          with_paid_contribution: insured.filter(i => i.has_paid_contribution).length,
+          without_paid_contribution: insured.filter(i => !i.has_paid_contribution).length,
+        };
 
-      const summaryData: InsuredSummaryPDFData = {
-        insured: insured.map(i => ({
-          matricule: i.matricule,
-          first_name: i.first_name,
-          last_name: i.last_name,
-          gender: i.gender,
-          birth_date: i.birth_date,
-          phone: i.phone,
-          email: i.email,
-          employer: i.employer,
-          job_title: i.job_title,
-          status: i.status,
-          has_paid_contribution: i.has_paid_contribution,
-          contract_number: i.contract?.contract_number,
-        })),
-        stats,
-      };
+        const summaryData: InsuredSummaryPDFData = {
+          insured: insured.map(i => ({
+            matricule: i.matricule,
+            first_name: i.first_name,
+            last_name: i.last_name,
+            gender: i.gender,
+            birth_date: i.birth_date,
+            phone: i.phone,
+            email: i.email,
+            employer: i.employer,
+            job_title: i.job_title,
+            status: i.status,
+            has_paid_contribution: i.has_paid_contribution,
+            contract_number: i.contract?.contract_number,
+          })),
+          stats: summaryStats,
+        };
 
-      generateInsuredSummaryPDF(summaryData);
-      toast.success('PDF généré', {
-        description: 'Le récapitulatif des assurés a été téléchargé.',
-      });
-    } catch (error) {
-      toast.error('Erreur', {
-        description: 'Impossible de générer le récapitulatif.',
-      });
-    }
+        const result = await generateInsuredSummaryPDF(summaryData, { preview: true });
+        return result as { dataUrl: string; fileName: string };
+      },
+      'Récapitulatif des assurés'
+    );
   };
 
   const handleDownloadCard = (ins: any) => {
