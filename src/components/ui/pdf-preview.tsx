@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Download, X, ZoomIn, ZoomOut, Loader2 } from 'lucide-react';
+import { Download, ZoomIn, ZoomOut, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -46,7 +47,12 @@ export function PDFPreview({
       <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 py-4 border-b border-border flex-shrink-0">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
+            <div>
+              <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
+              <DialogDescription className="sr-only">
+                Prévisualisation du document PDF avec options de zoom et téléchargement
+              </DialogDescription>
+            </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
                 <Button
@@ -88,14 +94,16 @@ export function PDFPreview({
               </div>
             </div>
           ) : pdfDataUrl ? (
-            <div className="flex justify-center">
+            <div className="flex justify-center items-start h-full">
               <iframe
                 src={pdfDataUrl}
                 className="bg-white shadow-lg rounded-lg border border-border"
                 style={{
-                  width: `${(210 * zoom) / 100 * 3}px`,
-                  height: `${(297 * zoom) / 100 * 3}px`,
-                  maxWidth: '100%',
+                  width: '100%',
+                  height: '100%',
+                  minHeight: '500px',
+                  transform: `scale(${zoom / 100})`,
+                  transformOrigin: 'top center',
                 }}
                 title="Aperçu PDF"
               />
