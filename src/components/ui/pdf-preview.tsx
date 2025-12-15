@@ -129,7 +129,16 @@ export function usePDFPreview() {
     
     try {
       const { dataUrl, fileName: name } = await generatePDF();
-      setPdfDataUrl(dataUrl);
+      // Convert data URL to blob URL for better iframe compatibility
+      const base64Data = dataUrl.split(',')[1];
+      const binaryData = atob(base64Data);
+      const bytes = new Uint8Array(binaryData.length);
+      for (let i = 0; i < binaryData.length; i++) {
+        bytes[i] = binaryData.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
+      setPdfDataUrl(blobUrl);
       setFileName(name);
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -143,6 +152,9 @@ export function usePDFPreview() {
     setIsOpen(false);
     // Clean up blob URL after a short delay
     setTimeout(() => {
+      if (pdfDataUrl && pdfDataUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(pdfDataUrl);
+      }
       setPdfDataUrl(null);
     }, 300);
   };
