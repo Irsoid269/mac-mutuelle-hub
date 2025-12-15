@@ -2286,7 +2286,7 @@ export const generateBeneficiaryCardPDF = async (beneficiary: {
   const cardX = 5;
   const cardY = 5;
   
-  // Background
+  // White background
   doc.setFillColor(255, 255, 255);
   doc.roundedRect(cardX, cardY, cardWidth, cardHeight, 6, 6, 'F');
   
@@ -2301,52 +2301,54 @@ export const generateBeneficiaryCardPDF = async (beneficiary: {
   doc.setFillColor(255, 255, 255);
   doc.rect(cardX, cardY + 2, cardWidth, 2, 'F');
   
-  // White header band
-  doc.setFillColor(255, 255, 255);
-  doc.rect(cardX, cardY + 4, cardWidth, 30, 'F');
+  // ============ HEADER SECTION ============
+  const headerY = cardY + 6;
   
-  // Blue accent line under header
-  doc.setFillColor(...COLORS.primary);
-  doc.rect(cardX, cardY + 34, cardWidth, 2, 'F');
-  
-  // Left decorative blue stripe
-  doc.setFillColor(...COLORS.primary);
-  doc.rect(cardX, cardY + 4, 4, 30, 'F');
-  
-  // Logo and company info
-  let logoEndX = cardX + 12;
+  // Logo on left
   if (logoBase64) {
     try {
-      doc.addImage(logoBase64, 'PNG', cardX + 10, cardY + 8, 24, 21);
-      logoEndX = cardX + 38;
+      doc.addImage(logoBase64, 'PNG', cardX + 8, headerY, 22, 19);
     } catch {
       // Fallback handled below
     }
   }
   
-  // Company name
+  // Company name next to logo
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
+  doc.setFontSize(12);
   doc.setTextColor(...COLORS.primary);
-  doc.text('MAC ASSURANCES', logoEndX + 4, cardY + 17);
+  doc.text('MAC ASSURANCES', cardX + 34, headerY + 8);
   
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(6);
   doc.setTextColor(...COLORS.textLight);
-  doc.text("Mutuelle d'Assurance des Comores", logoEndX + 4, cardY + 25);
+  doc.text("Mutuelle d'Assurance des Comores", cardX + 34, headerY + 14);
   
-  // Card type badge - different color for beneficiary
-  doc.setFillColor(100, 200, 100); // Green for beneficiary
-  doc.roundedRect(cardX + cardWidth - 58, cardY + 10, 50, 18, 3, 3, 'F');
+  // Badges on right side (vertically stacked)
+  const badgeX = cardX + cardWidth - 45;
+  
+  // Green "CARTE D'ASSURÉ" badge
+  doc.setFillColor(...COLORS.success);
+  doc.roundedRect(badgeX, headerY, 40, 9, 2, 2, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(255, 255, 255);
-  doc.text("CARTE D'ASSURÉ", cardX + cardWidth - 33, cardY + 18, { align: 'center' });
   doc.setFontSize(7);
-  doc.text('AYANT DROIT', cardX + cardWidth - 33, cardY + 25, { align: 'center' });
+  doc.setTextColor(255, 255, 255);
+  doc.text("CARTE D'ASSURÉ", badgeX + 20, headerY + 6, { align: 'center' });
   
-  // Main content area
-  const contentY = cardY + 40;
+  // Yellow "AYANT DROIT" badge
+  doc.setFillColor(...COLORS.accent);
+  doc.roundedRect(badgeX, headerY + 11, 40, 8, 2, 2, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6);
+  doc.setTextColor(...COLORS.text);
+  doc.text('AYANT DROIT', badgeX + 20, headerY + 16, { align: 'center' });
+  
+  // Blue separator line
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(cardX, cardY + 28, cardWidth, 1.5, 'F');
+  
+  // ============ MAIN CONTENT SECTION ============
+  const contentY = cardY + 33;
   
   const relationshipLabels: Record<string, string> = {
     conjoint: 'Conjoint(e)',
@@ -2355,76 +2357,76 @@ export const generateBeneficiaryCardPDF = async (beneficiary: {
     autre: 'Autre',
   };
   
-  // Name
+  // Name with relationship badge
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
   doc.setTextColor(...COLORS.text);
-  doc.text(`${beneficiary.first_name} ${beneficiary.last_name}`.toUpperCase(), cardX + 10, contentY + 4);
+  doc.text(`${beneficiary.first_name} ${beneficiary.last_name}`.toUpperCase(), cardX + 10, contentY + 5);
   
-  // Relationship badge
-  doc.setFillColor(...COLORS.accent);
+  // Relationship badge under name
   const relText = relationshipLabels[beneficiary.relationship] || beneficiary.relationship;
-  doc.roundedRect(cardX + 10, contentY + 7, 30, 6, 2, 2, 'F');
+  doc.setFillColor(...COLORS.primary);
+  doc.roundedRect(cardX + 10, contentY + 8, 28, 6, 2, 2, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6);
-  doc.setTextColor(...COLORS.text);
-  doc.text(relText, cardX + 25, contentY + 11, { align: 'center' });
+  doc.setTextColor(255, 255, 255);
+  doc.text(relText, cardX + 24, contentY + 12, { align: 'center' });
   
-  // Principal insured reference
+  // Principal insured info (left side, below badge)
   if (beneficiary.insured) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
+    doc.setFontSize(6);
     doc.setTextColor(...COLORS.textLight);
-    doc.text(`Assuré principal: ${beneficiary.insured.first_name} ${beneficiary.insured.last_name}`, cardX + 10, contentY + 18);
-    doc.text(`Matricule: ${beneficiary.insured.matricule}`, cardX + 10, contentY + 23);
+    doc.text(`Assuré principal: ${beneficiary.insured.first_name} ${beneficiary.insured.last_name}`, cardX + 10, contentY + 20);
+    doc.text(`Matricule: ${beneficiary.insured.matricule}`, cardX + 10, contentY + 25);
   }
   
-  // Right side info
-  const rightX = cardX + cardWidth - 55;
+  // Right column - Birth date and gender
+  const rightColX = cardX + 80;
   
   // Birth date
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
   doc.setTextColor(...COLORS.textLight);
-  doc.text('Né(e) le', rightX, contentY + 4);
+  doc.text('Né(e) le', rightColX, contentY + 3);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.setTextColor(...COLORS.text);
+  doc.setTextColor(...COLORS.primary);
   const birthDate = new Date(beneficiary.birth_date);
-  doc.text(birthDate.toLocaleDateString('fr-FR'), rightX, contentY + 9);
+  doc.text(birthDate.toLocaleDateString('fr-FR'), rightColX, contentY + 8);
   
   // Gender
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
   doc.setTextColor(...COLORS.textLight);
-  doc.text('Sexe', rightX + 30, contentY + 4);
+  doc.text('Sexe', rightColX, contentY + 14);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.setTextColor(...COLORS.text);
-  doc.text(beneficiary.gender === 'M' ? 'Masculin' : 'Féminin', rightX + 30, contentY + 9);
+  doc.setTextColor(...COLORS.primary);
+  doc.text(beneficiary.gender === 'M' ? 'Masculin' : 'Féminin', rightColX, contentY + 19);
   
   // Validity dates
   if (beneficiary.insured?.insurance_start_date) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6);
     doc.setTextColor(...COLORS.textLight);
-    doc.text('Validité', rightX, contentY + 18);
+    doc.text('Validité', rightColX, contentY + 25);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
-    doc.setTextColor(...COLORS.text);
+    doc.setTextColor(...COLORS.success);
     const startDate = new Date(beneficiary.insured.insurance_start_date);
     const endDate = beneficiary.insured.insurance_end_date 
       ? new Date(beneficiary.insured.insurance_end_date) 
       : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
-    doc.text(`${startDate.toLocaleDateString('fr-FR')} - ${endDate.toLocaleDateString('fr-FR')}`, rightX, contentY + 23);
+    doc.text(`${startDate.toLocaleDateString('fr-FR')} - ${endDate.toLocaleDateString('fr-FR')}`, rightColX, contentY + 30);
   }
   
-  // Bottom bar
+  // ============ FOOTER BAR ============
   doc.setFillColor(...COLORS.primary);
   doc.roundedRect(cardX, cardY + cardHeight - 8, cardWidth, 8, 0, 0, 'F');
   doc.roundedRect(cardX, cardY + cardHeight - 6, cardWidth, 6, 6, 6, 'F');
   
-  // Company info in footer
+  // Contract info in footer
   if (beneficiary.insured?.contract) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6);
