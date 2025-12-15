@@ -23,7 +23,7 @@ import { SubscriptionForm } from '@/components/forms/SubscriptionForm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { generateSubscriptionPDF, type SubscriptionPDFData } from '@/lib/pdfGenerator';
+import { generateSubscriptionPDF, generateSubscriptionSummaryPDF, type SubscriptionPDFData, type SubscriptionSummaryPDFData } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -79,6 +79,38 @@ export default function Subscriptions() {
     } catch (error) {
       toast.error('Erreur', {
         description: 'Impossible de générer le PDF.',
+      });
+    }
+  };
+
+  const handleGenerateSummaryPDF = async () => {
+    try {
+      const summaryData: SubscriptionSummaryPDFData = {
+        contracts: contracts.map(c => ({
+          contract_number: c.contract_number,
+          client_code: c.client_code,
+          raison_sociale: c.raison_sociale,
+          status: c.status,
+          start_date: c.start_date,
+          created_at: c.created_at,
+          insured_count: c.insured?.length || 0,
+        })),
+        stats: {
+          total: stats.total,
+          en_attente: stats.en_attente,
+          validee: stats.validee,
+          rejetee: stats.rejetee,
+          reserve_medicale: stats.reserve_medicale,
+        },
+      };
+
+      generateSubscriptionSummaryPDF(summaryData);
+      toast.success('PDF généré', {
+        description: 'Le récapitulatif des souscriptions a été téléchargé.',
+      });
+    } catch (error) {
+      toast.error('Erreur', {
+        description: 'Impossible de générer le récapitulatif.',
       });
     }
   };
@@ -148,9 +180,9 @@ export default function Subscriptions() {
             <SelectItem value="reserve_medicale">Réserve médicale</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" className="gap-2">
-          <Download className="w-4 h-4" />
-          Exporter
+        <Button variant="outline" className="gap-2" onClick={handleGenerateSummaryPDF}>
+          <FileText className="w-4 h-4" />
+          Récapitulatif PDF
         </Button>
       </div>
 
