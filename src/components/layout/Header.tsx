@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { SyncStatusIndicator } from './SyncStatusIndicator';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -66,6 +67,7 @@ export function Header({ onMenuClick, title }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          <SyncStatusIndicator />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
