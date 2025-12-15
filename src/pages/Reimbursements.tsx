@@ -14,6 +14,7 @@ import {
   Image,
   File,
   ExternalLink,
+  Calculator,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FileUpload, type UploadedFile } from '@/components/ui/file-upload';
@@ -39,10 +40,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useReimbursementsData } from '@/hooks/useReimbursementsData';
 import { useProvidersData } from '@/hooks/useProvidersData';
+import { useReimbursementCeilings } from '@/hooks/useReimbursementCeilings';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -60,6 +63,11 @@ export default function Reimbursements() {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [reimbursementDocs, setReimbursementDocs] = useState<any[]>([]);
   const [isLoadingDocs, setIsLoadingDocs] = useState(false);
+  const [validationDialog, setValidationDialog] = useState<{
+    isOpen: boolean;
+    reimbursement: any | null;
+    calculation: { approvedAmount: number; rate: number; ceiling: number; appliedCeiling: boolean } | null;
+  }>({ isOpen: false, reimbursement: null, calculation: null });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -83,6 +91,7 @@ export default function Reimbursements() {
   } = useReimbursementsData(searchTerm, statusFilter);
 
   const { providers, getProvidersByType } = useProvidersData();
+  const { calculateApprovedAmount, getCeilingForCareType } = useReimbursementCeilings();
 
   // Update filtered providers when care type changes
   useEffect(() => {
@@ -101,9 +110,9 @@ export default function Reimbursements() {
     }).format(amount);
   };
 
-  const handleStatusChange = async (id: string, newStatus: string) => {
+  const handleStatusChange = async (id: string, newStatus: string, approvedAmount?: number, paidAmount?: number) => {
     try {
-      await updateStatus(id, newStatus);
+      await updateStatus(id, newStatus, approvedAmount, paidAmount);
       toast.success('Statut mis à jour', {
         description: `Le remboursement a été passé en "${newStatus}"`,
       });
@@ -112,6 +121,26 @@ export default function Reimbursements() {
         description: 'Impossible de mettre à jour le statut.',
       });
     }
+  };
+
+  const handleOpenValidation = (reimbursement: any) => {
+    const calculation = calculateApprovedAmount(reimbursement.care_type, reimbursement.claimed_amount);
+    setValidationDialog({
+      isOpen: true,
+      reimbursement,
+      calculation,
+    });
+  };
+
+  const handleConfirmValidation = async () => {
+    if (!validationDialog.reimbursement || !validationDialog.calculation) return;
+    
+    await handleStatusChange(
+      validationDialog.reimbursement.id,
+      'valide',
+      validationDialog.calculation.approvedAmount
+    );
+    setValidationDialog({ isOpen: false, reimbursement: null, calculation: null });
   };
 
   const handleSubmit = async () => {
@@ -527,10 +556,10 @@ export default function Reimbursements() {
                             <>
                               <DropdownMenuItem
                                 className="gap-2"
-                                onClick={() => handleStatusChange(r.id, 'valide')}
+                                onClick={() => handleOpenValidation(r)}
                               >
-                                <CheckCircle className="w-4 h-4" />
-                                Valider
+                                <Calculator className="w-4 h-4" />
+                                Valider avec barème
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="gap-2 text-destructive"
@@ -703,6 +732,73 @@ export default function Reimbursements() {
                   Télécharger fiche
                 </Button>
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Validation Dialog with Ceiling Calculation */}
+      <Dialog
+        open={validationDialog.isOpen}
+        onOpenChange={(open) => !open && setValidationDialog({ isOpen: false, reimbursement: null, calculation: null })}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calculator className="w-5 h-5" />
+              Validation avec barème
+            </DialogTitle>
+          </DialogHeader>
+          {validationDialog.reimbursement && validationDialog.calculation && (
+            <div className="space-y-4">
+              <div className="p-4 bg-muted/30 rounded-lg space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Type de soin</span>
+                  <span className="font-medium capitalize">{validationDialog.reimbursement.care_type}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Montant réclamé</span>
+                  <span className="font-medium">{formatCurrency(validationDialog.reimbursement.claimed_amount)}</span>
+                </div>
+                <div className="border-t border-border pt-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Taux appliqué</span>
+                    <span className="font-medium text-primary">{validationDialog.calculation.rate}%</span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span className="text-muted-foreground">Plafond</span>
+                    <span className="font-medium">{formatCurrency(validationDialog.calculation.ceiling)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-primary/10 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Montant approuvé</span>
+                  <span className="text-xl font-bold text-primary">
+                    {formatCurrency(validationDialog.calculation.approvedAmount)}
+                  </span>
+                </div>
+                {validationDialog.calculation.appliedCeiling && (
+                  <p className="text-xs text-warning mt-2 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    Plafond atteint pour ce type de soin
+                  </p>
+                )}
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setValidationDialog({ isOpen: false, reimbursement: null, calculation: null })}
+                >
+                  Annuler
+                </Button>
+                <Button onClick={handleConfirmValidation} className="gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  Confirmer la validation
+                </Button>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Save, User, Shield, Bell, Database, Mail } from 'lucide-react';
+import { Save, User, Shield, Bell, Database, Mail, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
+import { ReimbursementCeilingsTab } from '@/components/settings/ReimbursementCeilingsTab';
 import {
   Select,
   SelectContent,
@@ -56,6 +57,10 @@ export default function Settings() {
           <TabsTrigger value="system" className="gap-2">
             <Database className="w-4 h-4" />
             Système
+          </TabsTrigger>
+          <TabsTrigger value="ceilings" className="gap-2">
+            <Calculator className="w-4 h-4" />
+            Barèmes
           </TabsTrigger>
         </TabsList>
 
@@ -294,6 +299,10 @@ export default function Settings() {
               </div>
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="ceilings">
+          <ReimbursementCeilingsTab />
         </TabsContent>
       </Tabs>
     </div>

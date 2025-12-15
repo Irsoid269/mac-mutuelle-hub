@@ -591,6 +591,39 @@ export type Database = {
         }
         Relationships: []
       }
+      reimbursement_ceilings: {
+        Row: {
+          care_type: string
+          ceiling_amount: number
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          reimbursement_rate: number
+          updated_at: string
+        }
+        Insert: {
+          care_type: string
+          ceiling_amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          reimbursement_rate?: number
+          updated_at?: string
+        }
+        Update: {
+          care_type?: string
+          ceiling_amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          reimbursement_rate?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reimbursements: {
         Row: {
           approved_amount: number | null
