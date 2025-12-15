@@ -257,88 +257,108 @@ export function useReimbursementsDataOffline(searchTerm: string = '', statusFilt
     notes?: string;
     files?: File[];
   }) => {
-    const reimbursementNumber = `RMB-${Date.now().toString(36).toUpperCase()}`;
-    const id = generateUUID();
-    const now = nowISO();
+    try {
+      const reimbursementNumber = `RMB-${Date.now().toString(36).toUpperCase()}`;
+      const id = generateUUID();
+      const now = nowISO();
 
-    const newRecord: LocalReimbursement = {
-      id,
-      reimbursement_number: reimbursementNumber,
-      insured_id: data.insured_id,
-      claimed_amount: data.claimed_amount,
-      medical_date: data.medical_date,
-      provider_id: data.provider_id,
-      care_type: data.care_type,
-      notes: data.notes,
-      status: 'soumis',
-      created_at: now,
-      updated_at: now,
-      _syncStatus: navigator.onLine ? 'synced' : 'pending',
-      _localUpdatedAt: now,
-    };
+      const newRecord: LocalReimbursement = {
+        id,
+        reimbursement_number: reimbursementNumber,
+        insured_id: data.insured_id,
+        claimed_amount: data.claimed_amount,
+        medical_date: data.medical_date,
+        provider_id: data.provider_id,
+        care_type: data.care_type,
+        notes: data.notes,
+        status: 'soumis',
+        created_at: now,
+        updated_at: now,
+        _syncStatus: 'pending',
+        _localUpdatedAt: now,
+      };
 
-    // Sauvegarder localement
-    await offlineDb.reimbursements.add(newRecord);
+      // Sauvegarder localement dans IndexedDB
+      await offlineDb.reimbursements.add(newRecord);
+      console.log('[useReimbursementsDataOffline] Record saved to IndexedDB:', id);
 
-    // Ajouter à la queue de sync
-    await syncService.addPendingChange('reimbursements', id, 'insert', newRecord as unknown as Record<string, unknown>);
+      // Ajouter à la queue de sync pour synchronisation ultérieure
+      await syncService.addPendingChange('reimbursements', id, 'insert', newRecord as unknown as Record<string, unknown>);
+      console.log('[useReimbursementsDataOffline] Added to pending changes queue');
 
-    // Si online et avec fichiers, les uploader
-    if (navigator.onLine && data.files && data.files.length > 0) {
-      for (const file of data.files) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        
-        await supabase.storage
-          .from('reimbursement-documents')
-          .upload(fileName, file);
+      // Si online et avec fichiers, les uploader
+      if (navigator.onLine && data.files && data.files.length > 0) {
+        for (const file of data.files) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+          
+          await supabase.storage
+            .from('reimbursement-documents')
+            .upload(fileName, file);
 
-        await supabase.from('documents').insert({
-          name: file.name,
-          file_url: fileName,
-          file_size: file.size,
-          mime_type: file.type,
-          document_type: 'justificatif',
-          related_type: 'reimbursement',
-          related_id: id,
-        });
+          await supabase.from('documents').insert({
+            name: file.name,
+            file_url: fileName,
+            file_size: file.size,
+            mime_type: file.type,
+            document_type: 'justificatif',
+            related_type: 'reimbursement',
+            related_id: id,
+          });
+        }
       }
-    }
 
-    await fetchData();
+      // Recharger les données locales
+      await fetchData();
+      return true;
+    } catch (error) {
+      console.error('[useReimbursementsDataOffline] Error creating reimbursement:', error);
+      throw error;
+    }
   }, [fetchData]);
 
   // Mettre à jour le statut
   const updateStatus = useCallback(async (id: string, newStatus: string, approvedAmount?: number, paidAmount?: number) => {
-    const existing = await offlineDb.reimbursements.get(id);
-    if (!existing) return;
-
-    const now = nowISO();
-    const updates: Partial<LocalReimbursement> = {
-      status: newStatus,
-      updated_at: now,
-      _syncStatus: navigator.onLine ? 'synced' : 'pending',
-      _localUpdatedAt: now,
-    };
-
-    if (newStatus === 'valide') {
-      updates.validated_at = now;
-      if (approvedAmount !== undefined) {
-        updates.approved_amount = approvedAmount;
+    try {
+      const existing = await offlineDb.reimbursements.get(id);
+      if (!existing) {
+        console.error('[useReimbursementsDataOffline] Record not found:', id);
+        return false;
       }
-    }
 
-    if (newStatus === 'paye') {
-      updates.paid_at = now;
-      if (paidAmount !== undefined) {
-        updates.paid_amount = paidAmount;
+      const now = nowISO();
+      const updates: Partial<LocalReimbursement> = {
+        status: newStatus,
+        updated_at: now,
+        _syncStatus: 'pending',
+        _localUpdatedAt: now,
+      };
+
+      if (newStatus === 'valide') {
+        updates.validated_at = now;
+        if (approvedAmount !== undefined) {
+          updates.approved_amount = approvedAmount;
+        }
       }
+
+      if (newStatus === 'paye') {
+        updates.paid_at = now;
+        if (paidAmount !== undefined) {
+          updates.paid_amount = paidAmount;
+        }
+      }
+
+      await offlineDb.reimbursements.update(id, updates);
+      console.log('[useReimbursementsDataOffline] Updated in IndexedDB:', id);
+      
+      await syncService.addPendingChange('reimbursements', id, 'update', { ...existing, ...updates } as unknown as Record<string, unknown>);
+
+      await fetchData();
+      return true;
+    } catch (error) {
+      console.error('[useReimbursementsDataOffline] Error updating status:', error);
+      throw error;
     }
-
-    await offlineDb.reimbursements.update(id, updates);
-    await syncService.addPendingChange('reimbursements', id, 'update', { ...existing, ...updates } as unknown as Record<string, unknown>);
-
-    await fetchData();
   }, [fetchData]);
 
   // Documents functions (require online)

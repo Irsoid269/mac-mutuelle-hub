@@ -98,20 +98,24 @@ export function useOfflineData<T extends { id: string }>(
   // Créer un enregistrement
   const create = useCallback(async (record: Omit<T, 'id'>): Promise<T | null> => {
     try {
+      const id = generateUUID();
+      const now = nowISO();
+      
       const newRecord = {
         ...record,
-        id: generateUUID(),
-        created_at: nowISO(),
-        updated_at: nowISO(),
-        _syncStatus: navigator.onLine ? 'synced' : 'pending',
-        _localUpdatedAt: nowISO(),
+        id,
+        created_at: now,
+        updated_at: now,
+        _syncStatus: 'pending', // Toujours 'pending' jusqu'à sync réussie
+        _localUpdatedAt: now,
       } as unknown as T & { _syncStatus: string; _localUpdatedAt: string };
 
       const table = offlineDb[tableName] as Table<T, string>;
       await table.add(newRecord as T);
+      console.log(`[useOfflineData] Created ${tableName}:`, id);
 
       // Ajouter à la queue de sync
-      await syncService.addPendingChange(tableName, newRecord.id, 'insert', newRecord as unknown as Record<string, unknown>);
+      await syncService.addPendingChange(tableName, id, 'insert', newRecord as unknown as Record<string, unknown>);
 
       // Recharger les données
       await loadLocalData();
@@ -119,7 +123,7 @@ export function useOfflineData<T extends { id: string }>(
       return newRecord as T;
     } catch (error) {
       console.error(`[useOfflineData] Error creating ${tableName}:`, error);
-      return null;
+      throw error;
     }
   }, [tableName, loadLocalData]);
 
@@ -134,15 +138,17 @@ export function useOfflineData<T extends { id: string }>(
         return false;
       }
 
+      const now = nowISO();
       const updatedRecord = {
         ...existing,
         ...updates,
-        updated_at: nowISO(),
-        _syncStatus: navigator.onLine ? 'synced' : 'pending',
-        _localUpdatedAt: nowISO(),
+        updated_at: now,
+        _syncStatus: 'pending', // Toujours 'pending' jusqu'à sync réussie
+        _localUpdatedAt: now,
       };
 
       await table.put(updatedRecord);
+      console.log(`[useOfflineData] Updated ${tableName}:`, id);
 
       // Ajouter à la queue de sync
       await syncService.addPendingChange(tableName, id, 'update', updatedRecord);
@@ -153,7 +159,7 @@ export function useOfflineData<T extends { id: string }>(
       return true;
     } catch (error) {
       console.error(`[useOfflineData] Error updating ${tableName}:`, error);
-      return false;
+      throw error;
     }
   }, [tableName, loadLocalData]);
 
