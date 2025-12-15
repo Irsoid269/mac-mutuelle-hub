@@ -2235,3 +2235,203 @@ export const generateInsuredCardPDF = async (
   
   doc.save(fileName);
 };
+
+// Helper function to load image as base64
+const loadImageAsBase64 = async (url: string): Promise<string | null> => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+};
+
+// Generate Beneficiary Card PDF
+export const generateBeneficiaryCardPDF = async (beneficiary: {
+  id: string;
+  first_name: string;
+  last_name: string;
+  birth_date: string;
+  gender: 'M' | 'F';
+  relationship: string;
+  insured?: {
+    first_name: string;
+    last_name: string;
+    matricule: string;
+    insurance_start_date: string;
+    insurance_end_date?: string | null;
+    contract?: {
+      raison_sociale: string;
+      contract_number: string;
+    };
+  };
+}): Promise<string> => {
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: [90, 140],
+  });
+  
+  const logoBase64 = await loadImageAsBase64('/mac-logo.png');
+  
+  // Card dimensions
+  const cardWidth = 130;
+  const cardHeight = 80;
+  const cardX = 5;
+  const cardY = 5;
+  
+  // Background
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(cardX, cardY, cardWidth, cardHeight, 6, 6, 'F');
+  
+  // Border
+  doc.setDrawColor(...COLORS.primary);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(cardX, cardY, cardWidth, cardHeight, 6, 6, 'S');
+  
+  // Yellow accent stripe at very top
+  doc.setFillColor(...COLORS.accent);
+  doc.roundedRect(cardX, cardY, cardWidth, 4, 6, 6, 'F');
+  doc.setFillColor(255, 255, 255);
+  doc.rect(cardX, cardY + 2, cardWidth, 2, 'F');
+  
+  // White header band
+  doc.setFillColor(255, 255, 255);
+  doc.rect(cardX, cardY + 4, cardWidth, 30, 'F');
+  
+  // Blue accent line under header
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(cardX, cardY + 34, cardWidth, 2, 'F');
+  
+  // Left decorative blue stripe
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(cardX, cardY + 4, 4, 30, 'F');
+  
+  // Logo and company info
+  let logoEndX = cardX + 12;
+  if (logoBase64) {
+    try {
+      doc.addImage(logoBase64, 'PNG', cardX + 10, cardY + 8, 24, 21);
+      logoEndX = cardX + 38;
+    } catch {
+      // Fallback handled below
+    }
+  }
+  
+  // Company name
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(...COLORS.primary);
+  doc.text('MAC ASSURANCES', logoEndX + 4, cardY + 17);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text("Mutuelle d'Assurance des Comores", logoEndX + 4, cardY + 25);
+  
+  // Card type badge - different color for beneficiary
+  doc.setFillColor(100, 200, 100); // Green for beneficiary
+  doc.roundedRect(cardX + cardWidth - 58, cardY + 10, 50, 18, 3, 3, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text("CARTE D'ASSURÉ", cardX + cardWidth - 33, cardY + 18, { align: 'center' });
+  doc.setFontSize(7);
+  doc.text('AYANT DROIT', cardX + cardWidth - 33, cardY + 25, { align: 'center' });
+  
+  // Main content area
+  const contentY = cardY + 40;
+  
+  const relationshipLabels: Record<string, string> = {
+    conjoint: 'Conjoint(e)',
+    enfant: 'Enfant',
+    parent: 'Parent',
+    autre: 'Autre',
+  };
+  
+  // Name
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(...COLORS.text);
+  doc.text(`${beneficiary.first_name} ${beneficiary.last_name}`.toUpperCase(), cardX + 10, contentY + 4);
+  
+  // Relationship badge
+  doc.setFillColor(...COLORS.accent);
+  const relText = relationshipLabels[beneficiary.relationship] || beneficiary.relationship;
+  doc.roundedRect(cardX + 10, contentY + 7, 30, 6, 2, 2, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6);
+  doc.setTextColor(...COLORS.text);
+  doc.text(relText, cardX + 25, contentY + 11, { align: 'center' });
+  
+  // Principal insured reference
+  if (beneficiary.insured) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...COLORS.textLight);
+    doc.text(`Assuré principal: ${beneficiary.insured.first_name} ${beneficiary.insured.last_name}`, cardX + 10, contentY + 18);
+    doc.text(`Matricule: ${beneficiary.insured.matricule}`, cardX + 10, contentY + 23);
+  }
+  
+  // Right side info
+  const rightX = cardX + cardWidth - 55;
+  
+  // Birth date
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('Né(e) le', rightX, contentY + 4);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.text);
+  const birthDate = new Date(beneficiary.birth_date);
+  doc.text(birthDate.toLocaleDateString('fr-FR'), rightX, contentY + 9);
+  
+  // Gender
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('Sexe', rightX + 30, contentY + 4);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.text);
+  doc.text(beneficiary.gender === 'M' ? 'Masculin' : 'Féminin', rightX + 30, contentY + 9);
+  
+  // Validity dates
+  if (beneficiary.insured?.insurance_start_date) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    doc.setTextColor(...COLORS.textLight);
+    doc.text('Validité', rightX, contentY + 18);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(...COLORS.text);
+    const startDate = new Date(beneficiary.insured.insurance_start_date);
+    const endDate = beneficiary.insured.insurance_end_date 
+      ? new Date(beneficiary.insured.insurance_end_date) 
+      : new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+    doc.text(`${startDate.toLocaleDateString('fr-FR')} - ${endDate.toLocaleDateString('fr-FR')}`, rightX, contentY + 23);
+  }
+  
+  // Bottom bar
+  doc.setFillColor(...COLORS.primary);
+  doc.roundedRect(cardX, cardY + cardHeight - 8, cardWidth, 8, 0, 0, 'F');
+  doc.roundedRect(cardX, cardY + cardHeight - 6, cardWidth, 6, 6, 6, 'F');
+  
+  // Company info in footer
+  if (beneficiary.insured?.contract) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    doc.setTextColor(255, 255, 255);
+    doc.text(beneficiary.insured.contract.raison_sociale, cardX + 10, cardY + cardHeight - 2);
+    doc.text(`Contrat: ${beneficiary.insured.contract.contract_number}`, cardX + cardWidth - 10, cardY + cardHeight - 2, { align: 'right' });
+  }
+  
+  return doc.output('dataurlstring');
+};
