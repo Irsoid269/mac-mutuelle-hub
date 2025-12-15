@@ -18,13 +18,13 @@ import { fr } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { generateInsuredSummaryPDF, generateInsuredCardPDF, type InsuredSummaryPDFData, type InsuredCardPDFData } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
-import { PDFPreview, usePDFPreview } from '@/components/ui/pdf-preview';
+
 
 export default function Insured() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedInsured, setSelectedInsured] = useState<any>(null);
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
-  const pdfPreview = usePDFPreview();
+  
 
   const { insured, isLoading } = useInsuredData({ searchTerm });
 
@@ -57,39 +57,34 @@ export default function Insured() {
   };
 
   const handleGenerateSummaryPDF = () => {
-    pdfPreview.openPreview(
-      async () => {
-        const summaryStats = {
-          total: insured.length,
-          male: insured.filter(i => i.gender === 'M').length,
-          female: insured.filter(i => i.gender === 'F').length,
-          with_paid_contribution: insured.filter(i => i.has_paid_contribution).length,
-          without_paid_contribution: insured.filter(i => !i.has_paid_contribution).length,
-        };
+    const summaryStats = {
+      total: insured.length,
+      male: insured.filter(i => i.gender === 'M').length,
+      female: insured.filter(i => i.gender === 'F').length,
+      with_paid_contribution: insured.filter(i => i.has_paid_contribution).length,
+      without_paid_contribution: insured.filter(i => !i.has_paid_contribution).length,
+    };
 
-        const summaryData: InsuredSummaryPDFData = {
-          insured: insured.map(i => ({
-            matricule: i.matricule,
-            first_name: i.first_name,
-            last_name: i.last_name,
-            gender: i.gender,
-            birth_date: i.birth_date,
-            phone: i.phone,
-            email: i.email,
-            employer: i.employer,
-            job_title: i.job_title,
-            status: i.status,
-            has_paid_contribution: i.has_paid_contribution,
-            contract_number: i.contract?.contract_number,
-          })),
-          stats: summaryStats,
-        };
+    const summaryData: InsuredSummaryPDFData = {
+      insured: insured.map(i => ({
+        matricule: i.matricule,
+        first_name: i.first_name,
+        last_name: i.last_name,
+        gender: i.gender,
+        birth_date: i.birth_date,
+        phone: i.phone,
+        email: i.email,
+        employer: i.employer,
+        job_title: i.job_title,
+        status: i.status,
+        has_paid_contribution: i.has_paid_contribution,
+        contract_number: i.contract?.contract_number,
+      })),
+      stats: summaryStats,
+    };
 
-        const result = await generateInsuredSummaryPDF(summaryData, { preview: true });
-        return result as { dataUrl: string; fileName: string };
-      },
-      'Récapitulatif des assurés'
-    );
+    generateInsuredSummaryPDF(summaryData);
+    toast.success('PDF généré', { description: 'Le récapitulatif a été téléchargé.' });
   };
 
   const handleDownloadCard = (ins: any) => {
@@ -114,13 +109,8 @@ export default function Insured() {
       photo_url: ins.photo_url,
     };
 
-    pdfPreview.openPreview(
-      async () => {
-        const result = await generateInsuredCardPDF(cardData, { preview: true });
-        return result as { dataUrl: string; fileName: string };
-      },
-      `Carte d'assuré - ${ins.first_name} ${ins.last_name}`
-    );
+    generateInsuredCardPDF(cardData);
+    toast.success('PDF généré', { description: "La carte d'assuré a été téléchargée." });
   };
 
   if (isLoading) {
@@ -408,15 +398,6 @@ export default function Insured() {
         </DialogContent>
       </Dialog>
 
-      {/* PDF Preview */}
-      <PDFPreview
-        isOpen={pdfPreview.isOpen}
-        onClose={pdfPreview.closePreview}
-        pdfDataUrl={pdfPreview.pdfDataUrl}
-        fileName={pdfPreview.fileName}
-        title={pdfPreview.title}
-        isLoading={pdfPreview.isLoading}
-      />
     </div>
   );
 }

@@ -24,7 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { generateContributionReceiptPDF, ContributionReceiptPDFData } from '@/lib/pdfGenerator';
-import { PDFPreview, usePDFPreview } from '@/components/ui/pdf-preview';
+
 import {
   Table,
   TableBody,
@@ -50,7 +50,7 @@ export default function Contributions() {
     startDate: '',
     endDate: '',
   });
-  const pdfPreview = usePDFPreview();
+  
 
   // Form state
   const [formData, setFormData] = useState({
@@ -251,13 +251,8 @@ export default function Contributions() {
       payment_status: contribution.payment_status,
     };
 
-    pdfPreview.openPreview(
-      async () => {
-        const result = await generateContributionReceiptPDF(pdfData, { preview: true });
-        return result as { dataUrl: string; fileName: string };
-      },
-      `Reçu de paiement - ${contribution.contract?.contract_number || 'N/A'}`
-    );
+    generateContributionReceiptPDF(pdfData);
+    toast({ title: 'PDF généré', description: 'Le reçu de paiement a été téléchargé.' });
   };
 
   const handleViewHistory = async (contribution: any) => {
@@ -668,15 +663,6 @@ export default function Contributions() {
         </DialogContent>
       </Dialog>
 
-      {/* PDF Preview */}
-      <PDFPreview
-        isOpen={pdfPreview.isOpen}
-        onClose={pdfPreview.closePreview}
-        pdfDataUrl={pdfPreview.pdfDataUrl}
-        fileName={pdfPreview.fileName}
-        title={pdfPreview.title}
-        isLoading={pdfPreview.isLoading}
-      />
 
       {/* Payment History Dialog */}
       <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>

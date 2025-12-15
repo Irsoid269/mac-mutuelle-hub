@@ -26,13 +26,13 @@ import { fr } from 'date-fns/locale';
 import { generateSubscriptionPDF, generateSubscriptionSummaryPDF, type SubscriptionPDFData, type SubscriptionSummaryPDFData } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { PDFPreview, usePDFPreview } from '@/components/ui/pdf-preview';
+
 
 export default function Subscriptions() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const pdfPreview = usePDFPreview();
+  
 
   const { contracts, stats, isLoading, refetch } = useContractsData(searchTerm, statusFilter);
 
@@ -43,72 +43,62 @@ export default function Subscriptions() {
   };
 
   const handleGeneratePDF = async (contract: any) => {
-    pdfPreview.openPreview(
-      async () => {
-        // Fetch full insured data with beneficiaries
-        const { data: insuredData } = await supabase
-          .from('insured')
-          .select('first_name, last_name, matricule, birth_date, gender, marital_status, phone, email, job_title, employer')
-          .eq('contract_id', contract.id);
+    // Fetch full insured data with beneficiaries
+    const { data: insuredData } = await supabase
+      .from('insured')
+      .select('first_name, last_name, matricule, birth_date, gender, marital_status, phone, email, job_title, employer')
+      .eq('contract_id', contract.id);
 
-        // Fetch beneficiaries for the contract's insured
-        let beneficiariesData: any[] = [];
-        if (insuredData && insuredData.length > 0) {
-          const { data: beneficiaries } = await supabase
-            .from('beneficiaries')
-            .select('first_name, last_name, relationship, birth_date, gender')
-            .in('insured_id', insuredData.map(() => contract.id));
-          beneficiariesData = beneficiaries || [];
-        }
+    // Fetch beneficiaries for the contract's insured
+    let beneficiariesData: any[] = [];
+    if (insuredData && insuredData.length > 0) {
+      const { data: beneficiaries } = await supabase
+        .from('beneficiaries')
+        .select('first_name, last_name, relationship, birth_date, gender')
+        .in('insured_id', insuredData.map(() => contract.id));
+      beneficiariesData = beneficiaries || [];
+    }
 
-        const pdfData: SubscriptionPDFData = {
-          contract_number: contract.contract_number,
-          client_code: contract.client_code,
-          raison_sociale: contract.raison_sociale,
-          status: contract.status,
-          start_date: contract.start_date,
-          created_at: contract.created_at,
-          address: contract.address,
-          phone: contract.phone,
-          email: contract.email,
-          insured: insuredData || [],
-          beneficiaries: beneficiariesData,
-        };
+    const pdfData: SubscriptionPDFData = {
+      contract_number: contract.contract_number,
+      client_code: contract.client_code,
+      raison_sociale: contract.raison_sociale,
+      status: contract.status,
+      start_date: contract.start_date,
+      created_at: contract.created_at,
+      address: contract.address,
+      phone: contract.phone,
+      email: contract.email,
+      insured: insuredData || [],
+      beneficiaries: beneficiariesData,
+    };
 
-        const result = await generateSubscriptionPDF(pdfData, { preview: true });
-        return result as { dataUrl: string; fileName: string };
-      },
-      `Attestation de souscription - ${contract.raison_sociale}`
-    );
+    generateSubscriptionPDF(pdfData);
+    toast.success('PDF généré', { description: "L'attestation de souscription a été téléchargée." });
   };
 
-  const handleGenerateSummaryPDF = async () => {
-    pdfPreview.openPreview(
-      async () => {
-        const summaryData: SubscriptionSummaryPDFData = {
-          contracts: contracts.map(c => ({
-            contract_number: c.contract_number,
-            client_code: c.client_code,
-            raison_sociale: c.raison_sociale,
-            status: c.status,
-            start_date: c.start_date,
-            created_at: c.created_at,
-            insured_count: c.insured?.length || 0,
-          })),
-          stats: {
-            total: stats.total,
-            en_attente: stats.en_attente,
-            validee: stats.validee,
-            rejetee: stats.rejetee,
-            reserve_medicale: stats.reserve_medicale,
-          },
-        };
-
-        const result = await generateSubscriptionSummaryPDF(summaryData, { preview: true });
-        return result as { dataUrl: string; fileName: string };
+  const handleGenerateSummaryPDF = () => {
+    const summaryData: SubscriptionSummaryPDFData = {
+      contracts: contracts.map(c => ({
+        contract_number: c.contract_number,
+        client_code: c.client_code,
+        raison_sociale: c.raison_sociale,
+        status: c.status,
+        start_date: c.start_date,
+        created_at: c.created_at,
+        insured_count: c.insured?.length || 0,
+      })),
+      stats: {
+        total: stats.total,
+        en_attente: stats.en_attente,
+        validee: stats.validee,
+        rejetee: stats.rejetee,
+        reserve_medicale: stats.reserve_medicale,
       },
-      'Récapitulatif des souscriptions'
-    );
+    };
+
+    generateSubscriptionSummaryPDF(summaryData);
+    toast.success('PDF généré', { description: 'Le récapitulatif a été téléchargé.' });
   };
 
   if (isLoading) {
@@ -269,15 +259,6 @@ export default function Subscriptions() {
         </div>
       </div>
 
-      {/* PDF Preview */}
-      <PDFPreview
-        isOpen={pdfPreview.isOpen}
-        onClose={pdfPreview.closePreview}
-        pdfDataUrl={pdfPreview.pdfDataUrl}
-        fileName={pdfPreview.fileName}
-        title={pdfPreview.title}
-        isLoading={pdfPreview.isLoading}
-      />
     </div>
   );
 }
