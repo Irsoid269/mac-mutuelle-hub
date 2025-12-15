@@ -106,16 +106,11 @@ export function PDFPreview({
             </div>
           ) : pdfDataUrl ? (
             <div className="flex justify-center items-start h-full">
-              <object
-                data={iframeSrc}
-                type="application/pdf"
-                aria-label="Aperçu PDF"
-                className="w-full h-[75vh] bg-white shadow-lg rounded-lg border border-border"
-              >
-                <p className="text-sm text-muted-foreground p-4">
-                  Impossible d'afficher l'aperçu PDF dans votre navigateur. Cliquez sur « Télécharger ».
-                </p>
-              </object>
+              <iframe
+                src={iframeSrc}
+                title="Aperçu PDF"
+                className="w-full h-[75vh] bg-background shadow-lg rounded-lg border border-border"
+              />
             </div>
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground">
