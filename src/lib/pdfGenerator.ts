@@ -1319,3 +1319,161 @@ export const generateMonthlySummaryPDF = (data: MonthlySummaryPDFData): void => 
   
   doc.save(`Recapitulatif_Remboursements_${data.month}.pdf`);
 };
+
+// ===== RÉCAPITULATIF DES SOUSCRIPTIONS =====
+export interface SubscriptionSummaryPDFData {
+  contracts: {
+    contract_number: string;
+    client_code: string;
+    raison_sociale: string;
+    status: string;
+    start_date: string;
+    created_at: string;
+    insured_count: number;
+  }[];
+  stats: {
+    total: number;
+    en_attente: number;
+    validee: number;
+    rejetee: number;
+    reserve_medicale: number;
+  };
+}
+
+export const generateSubscriptionSummaryPDF = (data: SubscriptionSummaryPDFData): void => {
+  const doc = new jsPDF('landscape');
+  const pageWidth = doc.internal.pageSize.getWidth();
+  
+  let y = addHeader(doc, 'RÉCAPITULATIF', 'DES SOUSCRIPTIONS');
+  
+  // Date box
+  const today = new Date();
+  const dateLabel = format(today, 'dd MMMM yyyy', { locale: fr });
+  
+  doc.setFillColor(...COLORS.primary);
+  doc.roundedRect(pageWidth - 95, y, 80, 22, 3, 3, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text('Date d\'édition', pageWidth - 55, y + 8, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text(dateLabel.toUpperCase(), pageWidth - 55, y + 17, { align: 'center' });
+  
+  y += 30;
+  
+  // Statistics cards
+  const cardWidth = 50;
+  const cardSpacing = 8;
+  const startX = 15;
+  
+  const statsCards = [
+    { label: 'Total', value: data.stats.total.toString(), color: COLORS.primary },
+    { label: 'En attente', value: data.stats.en_attente.toString(), color: COLORS.warning },
+    { label: 'Validées', value: data.stats.validee.toString(), color: COLORS.success },
+    { label: 'Rejetées', value: data.stats.rejetee.toString(), color: COLORS.error },
+    { label: 'Réserve médicale', value: data.stats.reserve_medicale.toString(), color: [245, 158, 11] as [number, number, number] },
+  ];
+  
+  statsCards.forEach((card, index) => {
+    const x = startX + (cardWidth + cardSpacing) * index;
+    
+    // Card background
+    doc.setFillColor(...COLORS.lightGray);
+    doc.roundedRect(x, y, cardWidth, 24, 2, 2, 'F');
+    
+    // Top accent
+    doc.setFillColor(card.color[0], card.color[1], card.color[2]);
+    doc.rect(x, y, cardWidth, 3, 'F');
+    
+    // Label
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...COLORS.textLight);
+    doc.text(card.label, x + cardWidth / 2, y + 11, { align: 'center' });
+    
+    // Value
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(card.color[0], card.color[1], card.color[2]);
+    doc.text(card.value, x + cardWidth / 2, y + 21, { align: 'center' });
+  });
+  
+  y += 35;
+  
+  // Subscriptions table
+  y = addSectionTitle(doc, 'Liste des souscriptions', y);
+  
+  const statusLabels: Record<string, string> = {
+    en_attente: 'En attente',
+    validee: 'Validée',
+    rejetee: 'Rejetée',
+    reserve_medicale: 'Réserve médicale',
+  };
+  
+  const tableData = data.contracts.map(c => [
+    c.contract_number,
+    c.client_code,
+    c.raison_sociale,
+    c.insured_count.toString(),
+    formatDate(c.start_date),
+    formatDate(c.created_at),
+    statusLabels[c.status] || c.status,
+  ]);
+  
+  autoTable(doc, {
+    startY: y,
+    head: [['N° Contrat', 'Code Client', 'Raison Sociale', 'Nb Assurés', 'Date début', 'Date création', 'Statut']],
+    body: tableData,
+    theme: 'striped',
+    headStyles: {
+      fillColor: COLORS.primary,
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 10,
+    },
+    bodyStyles: {
+      fontSize: 9,
+    },
+    alternateRowStyles: {
+      fillColor: COLORS.lightGray,
+    },
+    styles: {
+      cellPadding: 5,
+      lineColor: COLORS.mediumGray,
+      lineWidth: 0.1,
+    },
+    columnStyles: {
+      0: { cellWidth: 55 },
+      1: { cellWidth: 35, halign: 'center' },
+      2: { cellWidth: 70 },
+      3: { cellWidth: 30, halign: 'center' },
+      4: { cellWidth: 35, halign: 'center' },
+      5: { cellWidth: 35, halign: 'center' },
+      6: { cellWidth: 40, halign: 'center' },
+    },
+    margin: { left: 15, right: 15 },
+    didParseCell: (hookData) => {
+      // Color status cells
+      if (hookData.section === 'body' && hookData.column.index === 6) {
+        const cellValue = hookData.cell.raw as string;
+        if (cellValue === 'Validée') {
+          hookData.cell.styles.textColor = COLORS.success as any;
+          hookData.cell.styles.fontStyle = 'bold';
+        } else if (cellValue === 'Rejetée') {
+          hookData.cell.styles.textColor = COLORS.error as any;
+          hookData.cell.styles.fontStyle = 'bold';
+        } else if (cellValue === 'En attente') {
+          hookData.cell.styles.textColor = COLORS.warning as any;
+        } else if (cellValue === 'Réserve médicale') {
+          hookData.cell.styles.textColor = [245, 158, 11] as any;
+          hookData.cell.styles.fontStyle = 'bold';
+        }
+      }
+    },
+  });
+  
+  addFooter(doc);
+  
+  doc.save(`Recapitulatif_Souscriptions_${format(today, 'yyyy-MM-dd')}.pdf`);
+};
