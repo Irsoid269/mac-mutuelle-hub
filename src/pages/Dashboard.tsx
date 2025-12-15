@@ -6,7 +6,7 @@ import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useDashboardData } from '@/hooks/useDashboardData';
+import { useDashboardDataOffline } from '@/hooks/useDashboardDataOffline';
 import { cn } from '@/lib/utils';
 
 export default function Dashboard() {
@@ -17,8 +17,9 @@ export default function Dashboard() {
     recentActivity,
     pendingReimbursements,
     isLoading,
+    isOnline,
     refetch,
-  } = useDashboardData();
+  } = useDashboardDataOffline();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-KM', {

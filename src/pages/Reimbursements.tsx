@@ -43,7 +43,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { useReimbursementsData } from '@/hooks/useReimbursementsData';
+import { useReimbursementsDataOffline } from '@/hooks/useReimbursementsDataOffline';
 import { useProvidersData } from '@/hooks/useProvidersData';
 import { useReimbursementCeilings } from '@/hooks/useReimbursementCeilings';
 import { Label } from '@/components/ui/label';
@@ -84,11 +84,12 @@ export default function Reimbursements() {
     paidInsuredList,
     stats,
     isLoading,
+    isOnline,
     createReimbursement,
     updateStatus,
     getReimbursementDocuments,
     getDocumentUrl,
-  } = useReimbursementsData(searchTerm, statusFilter);
+  } = useReimbursementsDataOffline(searchTerm, statusFilter);
 
   const { providers, getProvidersByType } = useProvidersData();
   const { calculateApprovedAmount, getCeilingForCareType } = useReimbursementCeilings();
