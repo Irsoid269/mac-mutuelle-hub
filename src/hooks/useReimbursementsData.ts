@@ -117,11 +117,12 @@ export function useReimbursementsData(searchTerm: string = '', statusFilter: str
     provider_id?: string;
     care_type: string;
     notes?: string;
+    files?: File[];
   }) => {
     // Generate reimbursement number
     const reimbursementNumber = `RMB-${Date.now().toString(36).toUpperCase()}`;
 
-    const { error } = await supabase.from('reimbursements').insert({
+    const { data: reimbursement, error } = await supabase.from('reimbursements').insert({
       insured_id: data.insured_id,
       claimed_amount: data.claimed_amount,
       medical_date: data.medical_date,
@@ -130,10 +131,52 @@ export function useReimbursementsData(searchTerm: string = '', statusFilter: str
       notes: data.notes || null,
       reimbursement_number: reimbursementNumber,
       status: 'soumis',
-    });
+    }).select().single();
 
     if (error) throw error;
+
+    // Upload files if any
+    if (data.files && data.files.length > 0 && reimbursement) {
+      for (const file of data.files) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${reimbursement.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        
+        await supabase.storage
+          .from('reimbursement-documents')
+          .upload(fileName, file);
+
+        // Save document reference
+        await supabase.from('documents').insert({
+          name: file.name,
+          file_url: fileName,
+          file_size: file.size,
+          mime_type: file.type,
+          document_type: 'justificatif',
+          related_type: 'reimbursement',
+          related_id: reimbursement.id,
+        });
+      }
+    }
+
     fetchData();
+  };
+
+  const getReimbursementDocuments = async (reimbursementId: string) => {
+    const { data, error } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('related_type', 'reimbursement')
+      .eq('related_id', reimbursementId);
+    
+    if (error) throw error;
+    return data || [];
+  };
+
+  const getDocumentUrl = (filePath: string) => {
+    const { data } = supabase.storage
+      .from('reimbursement-documents')
+      .getPublicUrl(filePath);
+    return data.publicUrl;
   };
 
   const updateStatus = async (id: string, newStatus: string, paidAmount?: number) => {
@@ -179,5 +222,7 @@ export function useReimbursementsData(searchTerm: string = '', statusFilter: str
     refetch: fetchData,
     createReimbursement,
     updateStatus,
+    getReimbursementDocuments,
+    getDocumentUrl,
   };
 }
