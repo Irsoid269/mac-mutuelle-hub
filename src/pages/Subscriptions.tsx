@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { useContractsData } from '@/hooks/useContractsData';
+import { useContractsDataOffline } from '@/hooks/useContractsDataOffline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { SubscriptionForm } from '@/components/forms/SubscriptionForm';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -34,7 +34,7 @@ export default function Subscriptions() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   
 
-  const { contracts, stats, isLoading, refetch } = useContractsData(searchTerm, statusFilter);
+  const { contracts, stats, isLoading, isOnline, refetch } = useContractsDataOffline(searchTerm, statusFilter);
 
   const getInsuredName = (insuredList?: { first_name: string; last_name: string }[]) => {
     if (!insuredList || insuredList.length === 0) return 'N/A';

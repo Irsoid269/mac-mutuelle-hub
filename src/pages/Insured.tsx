@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useInsuredData } from '@/hooks/useInsuredData';
+import { useInsuredDataOffline } from '@/hooks/useInsuredDataOffline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,7 +26,7 @@ export default function Insured() {
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
   
 
-  const { insured, isLoading } = useInsuredData({ searchTerm });
+  const { insured, isLoading, isOnline } = useInsuredDataOffline({ searchTerm });
 
   const fetchFamilyMembers = async (insuredId: string) => {
     const { data } = await supabase
