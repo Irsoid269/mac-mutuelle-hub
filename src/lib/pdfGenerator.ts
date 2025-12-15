@@ -1959,15 +1959,15 @@ export const generateInsuredCardPDF = async (
 ): Promise<{ dataUrl: string; fileName: string } | void> => {
   await ensureLogo();
   
-  // Card dimensions (credit card size: 85.6mm x 53.98mm)
-  // We'll scale it up for better readability in PDF
-  const cardWidth = 180;
-  const cardHeight = 113;
+  // Card dimensions (credit card ratio: 85.6mm x 53.98mm)
+  // Scaled up for better print quality and readability
+  const cardWidth = 200;
+  const cardHeight = 126;
   
   const doc = new jsPDF({
     orientation: 'landscape',
     unit: 'mm',
-    format: [cardHeight + 20, cardWidth + 20],
+    format: [cardHeight + 30, cardWidth + 30],
   });
   
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -1977,185 +1977,227 @@ export const generateInsuredCardPDF = async (
   const cardX = (pageWidth - cardWidth) / 2;
   const cardY = (pageHeight - cardHeight) / 2;
   
-  // Card background with gradient effect
-  doc.setFillColor(...COLORS.white);
-  doc.roundedRect(cardX, cardY, cardWidth, cardHeight, 5, 5, 'F');
+  // ============ CARD BACKGROUND WITH GRADIENT EFFECT ============
+  // Main card background - white
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(cardX, cardY, cardWidth, cardHeight, 6, 6, 'F');
   
-  // Card border
+  // Subtle gradient effect with overlapping shapes
+  doc.setFillColor(248, 252, 255);
+  doc.roundedRect(cardX, cardY + cardHeight * 0.6, cardWidth, cardHeight * 0.4, 0, 0, 'F');
+  
+  // Card border with shadow effect
+  doc.setDrawColor(200, 220, 240);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(cardX + 0.5, cardY + 0.5, cardWidth, cardHeight, 6, 6, 'S');
+  
   doc.setDrawColor(...COLORS.primary);
-  doc.setLineWidth(0.8);
-  doc.roundedRect(cardX, cardY, cardWidth, cardHeight, 5, 5, 'S');
+  doc.setLineWidth(1);
+  doc.roundedRect(cardX, cardY, cardWidth, cardHeight, 6, 6, 'S');
   
-  // Top accent bar (yellow)
+  // ============ TOP HEADER SECTION ============
+  // Yellow accent stripe at top
   doc.setFillColor(...COLORS.accent);
-  doc.roundedRect(cardX, cardY, cardWidth, 4, 5, 5, 'F');
-  doc.setFillColor(...COLORS.white);
-  doc.rect(cardX, cardY + 2, cardWidth, 2, 'F');
+  doc.roundedRect(cardX, cardY, cardWidth, 5, 6, 6, 'F');
+  doc.setFillColor(255, 255, 255);
+  doc.rect(cardX, cardY + 3, cardWidth, 2, 'F');
   
-  // Blue header strip
+  // Blue header band
   doc.setFillColor(...COLORS.primary);
-  doc.rect(cardX, cardY + 4, cardWidth, 20, 'F');
+  doc.rect(cardX, cardY + 5, cardWidth, 28, 'F');
   
-  // Add logo if available
-  let logoEndX = cardX + 8;
+  // Decorative diagonal stripe
+  doc.setFillColor(30, 170, 230);
+  doc.moveTo(cardX + cardWidth - 80, cardY + 5);
+  doc.lineTo(cardX + cardWidth, cardY + 5);
+  doc.lineTo(cardX + cardWidth, cardY + 33);
+  doc.lineTo(cardX + cardWidth - 60, cardY + 33);
+  doc.fill();
+  
+  // ============ LOGO AND COMPANY INFO ============
+  let logoEndX = cardX + 10;
   if (logoBase64) {
     try {
-      doc.addImage(logoBase64, 'PNG', cardX + 5, cardY + 6, 16, 14);
-      logoEndX = cardX + 24;
+      doc.addImage(logoBase64, 'PNG', cardX + 8, cardY + 9, 22, 19);
+      logoEndX = cardX + 34;
     } catch {
-      // Fallback
+      // Fallback handled below
     }
   }
   
-  // Company name in header
+  // Company name
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFontSize(16);
   doc.setTextColor(255, 255, 255);
-  doc.text('MAC ASSURANCES', logoEndX + 2, cardY + 12);
+  doc.text('MAC ASSURANCES', logoEndX + 4, cardY + 17);
   
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.text("Carte d'Assuré", logoEndX + 2, cardY + 18);
-  
-  // Card type indicator on right
-  doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.setTextColor(255, 255, 255);
-  const cardTypeText = 'ASSURÉ PRINCIPAL';
-  doc.text(cardTypeText, cardX + cardWidth - 8, cardY + 15, { align: 'right' });
+  doc.setTextColor(255, 255, 255, 0.9);
+  doc.text("Mutuelle d'Assurance des Comores", logoEndX + 4, cardY + 24);
   
-  // Content area
-  const contentY = cardY + 28;
-  const col1X = cardX + 8;
-  const col2X = cardX + 70;
-  
-  // Photo placeholder or initials
-  const photoSize = 28;
-  const photoX = cardX + cardWidth - photoSize - 8;
-  const photoY = contentY;
-  
-  doc.setFillColor(...COLORS.lightGray);
-  doc.roundedRect(photoX, photoY, photoSize, photoSize, 3, 3, 'F');
-  doc.setDrawColor(...COLORS.primary);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(photoX, photoY, photoSize, photoSize, 3, 3, 'S');
-  
-  // Initials in photo placeholder
+  // Card type badge on right
+  doc.setFillColor(255, 229, 0);
+  doc.roundedRect(cardX + cardWidth - 58, cardY + 11, 50, 16, 3, 3, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
+  doc.setFontSize(7);
+  doc.setTextColor(...COLORS.text);
+  doc.text('CARTE D\'ASSURÉ', cardX + cardWidth - 33, cardY + 17, { align: 'center' });
+  doc.setFontSize(6);
+  doc.text('PRINCIPAL', cardX + cardWidth - 33, cardY + 23, { align: 'center' });
+  
+  // ============ MAIN CONTENT AREA ============
+  const contentY = cardY + 40;
+  const col1X = cardX + 12;
+  const col2X = cardX + cardWidth * 0.55;
+  
+  // ============ PHOTO SECTION ============
+  const photoSize = 36;
+  const photoX = cardX + cardWidth - photoSize - 15;
+  const photoY = contentY + 2;
+  
+  // Photo frame with gradient border
+  doc.setFillColor(240, 248, 255);
+  doc.roundedRect(photoX - 2, photoY - 2, photoSize + 4, photoSize + 4, 4, 4, 'F');
+  
+  doc.setDrawColor(...COLORS.primary);
+  doc.setLineWidth(0.8);
+  doc.roundedRect(photoX - 2, photoY - 2, photoSize + 4, photoSize + 4, 4, 4, 'S');
+  
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(photoX, photoY, photoSize, photoSize, 3, 3, 'F');
+  
+  // Initials with better styling
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
   doc.setTextColor(...COLORS.primary);
   doc.text(
     `${data.first_name[0]}${data.last_name[0]}`,
     photoX + photoSize / 2,
-    photoY + photoSize / 2 + 3,
+    photoY + photoSize / 2 + 5,
     { align: 'center' }
   );
   
-  // Matricule (prominent)
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  // ============ MATRICULE (PROMINENT) ============
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(col1X - 4, contentY - 2, 100, 16, 3, 3, 'F');
+  doc.setDrawColor(...COLORS.primary);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(col1X - 4, contentY - 2, 100, 16, 3, 3, 'S');
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
   doc.setTextColor(...COLORS.primary);
-  doc.text('N° Matricule', col1X, contentY + 4);
+  doc.text('N° MATRICULE', col1X, contentY + 3);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(...COLORS.text);
+  doc.text(data.matricule, col1X, contentY + 11);
+  
+  // ============ FULL NAME ============
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('NOM COMPLET', col1X, contentY + 22);
   
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(...COLORS.text);
-  doc.text(data.matricule, col1X, contentY + 11);
+  const fullName = `${data.first_name.toUpperCase()} ${data.last_name.toUpperCase()}`;
+  doc.text(fullName.length > 26 ? fullName.substring(0, 26) + '...' : fullName, col1X, contentY + 29);
   
-  // Name
+  // ============ BIRTH DATE & GENDER ============
+  // Birth date
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(...COLORS.textLight);
-  doc.text('Nom complet', col1X, contentY + 20);
+  doc.text('DATE DE NAISSANCE', col1X, contentY + 40);
   
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(...COLORS.text);
-  const fullName = `${data.first_name} ${data.last_name}`;
-  doc.text(fullName.length > 28 ? fullName.substring(0, 28) + '...' : fullName, col1X, contentY + 26);
-  
-  // Birth info
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(...COLORS.textLight);
-  doc.text('Date de naissance', col1X, contentY + 34);
-  
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(...COLORS.text);
-  doc.text(formatDate(data.birth_date), col1X, contentY + 40);
+  doc.text(formatDate(data.birth_date), col1X, contentY + 47);
   
   // Gender
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(...COLORS.textLight);
-  doc.text('Sexe', col1X + 40, contentY + 34);
+  doc.text('SEXE', col1X + 50, contentY + 40);
   
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
   doc.setTextColor(...COLORS.text);
-  doc.text(data.gender === 'M' ? 'Masculin' : 'Féminin', col1X + 40, contentY + 40);
+  doc.text(data.gender === 'M' ? 'Masculin' : 'Féminin', col1X + 50, contentY + 47);
   
-  // Employer
+  // ============ EMPLOYER ============
   if (data.employer) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(...COLORS.textLight);
-    doc.text('Employeur', col1X, contentY + 48);
+    doc.text('EMPLOYEUR', col1X, contentY + 56);
     
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setTextColor(...COLORS.text);
-    const employer = data.employer.length > 35 ? data.employer.substring(0, 35) + '...' : data.employer;
-    doc.text(employer, col1X, contentY + 53);
+    const employer = data.employer.length > 40 ? data.employer.substring(0, 40) + '...' : data.employer;
+    doc.text(employer, col1X, contentY + 63);
   }
   
-  // Contract info
+  // ============ CONTRACT NUMBER ============
   if (data.contract) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(...COLORS.textLight);
-    doc.text('N° Contrat', photoX, photoY + photoSize + 6);
+    doc.text('N° CONTRAT', photoX - 2, photoY + photoSize + 10);
     
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
     doc.setTextColor(...COLORS.text);
-    doc.text(data.contract.contract_number, photoX, photoY + photoSize + 11);
+    const contractNum = data.contract.contract_number.length > 22 
+      ? data.contract.contract_number.substring(0, 22) + '...' 
+      : data.contract.contract_number;
+    doc.text(contractNum, photoX - 2, photoY + photoSize + 17);
   }
   
-  // Bottom section with validity
-  const bottomY = cardY + cardHeight - 18;
+  // ============ BOTTOM VALIDITY SECTION ============
+  const bottomY = cardY + cardHeight - 24;
   
-  // Validity dates
-  doc.setFillColor(...COLORS.lightGray);
-  doc.rect(cardX, bottomY, cardWidth, 18, 'F');
+  // Bottom band with gradient
+  doc.setFillColor(245, 247, 250);
+  doc.rect(cardX, bottomY, cardWidth, 24, 'F');
+  
+  // Thin accent line
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(cardX, bottomY, cardWidth, 1, 'F');
+  
+  // Validity dates with icons
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('VALABLE DU', col1X, bottomY + 7);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...COLORS.text);
+  doc.text(formatDate(data.insurance_start_date), col1X, bottomY + 14);
   
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(...COLORS.textLight);
-  doc.text('Valable du:', col1X, bottomY + 6);
+  doc.text('AU', col1X + 55, bottomY + 7);
   
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
+  doc.setFontSize(11);
   doc.setTextColor(...COLORS.text);
-  doc.text(formatDate(data.insurance_start_date), col1X + 20, bottomY + 6);
+  doc.text(data.insurance_end_date ? formatDate(data.insurance_end_date) : 'Indéterminé', col1X + 55, bottomY + 14);
   
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.setTextColor(...COLORS.textLight);
-  doc.text('au:', col1X + 50, bottomY + 6);
-  
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(...COLORS.text);
-  doc.text(data.insurance_end_date ? formatDate(data.insurance_end_date) : 'Indéterminé', col1X + 58, bottomY + 6);
-  
-  // Status badge
+  // ============ STATUS BADGE ============
   const statusLabels: Record<string, string> = {
-    en_attente: 'En attente',
-    validee: 'Actif',
-    rejetee: 'Inactif',
-    reserve_medicale: 'Réserve',
+    en_attente: 'EN ATTENTE',
+    validee: 'ACTIF',
+    rejetee: 'INACTIF',
+    reserve_medicale: 'RÉSERVE',
   };
   
   const statusColors: Record<string, [number, number, number]> = {
@@ -2166,20 +2208,23 @@ export const generateInsuredCardPDF = async (
   };
   
   const statusColor = statusColors[data.status] || COLORS.secondary;
-  const statusLabel = statusLabels[data.status] || data.status;
+  const statusLabel = statusLabels[data.status] || data.status.toUpperCase();
   
+  // Status badge with shadow effect
+  doc.setFillColor(statusColor[0] - 20, statusColor[1] - 20, statusColor[2] - 20);
+  doc.roundedRect(cardX + cardWidth - 52, bottomY + 5.5, 42, 14, 4, 4, 'F');
   doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-  doc.roundedRect(cardX + cardWidth - 40, bottomY + 2, 32, 10, 3, 3, 'F');
+  doc.roundedRect(cardX + cardWidth - 53, bottomY + 5, 42, 14, 4, 4, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
+  doc.setFontSize(8);
   doc.setTextColor(255, 255, 255);
-  doc.text(statusLabel.toUpperCase(), cardX + cardWidth - 24, bottomY + 8.5, { align: 'center' });
+  doc.text(statusLabel, cardX + cardWidth - 32, bottomY + 13.5, { align: 'center' });
   
-  // Contact info at bottom
+  // ============ CONTACT INFO FOOTER ============
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
   doc.setTextColor(...COLORS.textLight);
-  doc.text('MAC ASSURANCES - Tél: +269 773 00 00 - www.macassurances.com', cardX + cardWidth / 2, bottomY + 15, { align: 'center' });
+  doc.text('MAC ASSURANCES • Tél: +269 773 00 00 • contact@macassurances.com • www.macassurances.com', cardX + cardWidth / 2, bottomY + 21, { align: 'center' });
   
   const fileName = `Carte_Assure_${data.matricule}.pdf`;
   
