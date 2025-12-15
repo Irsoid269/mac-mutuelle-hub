@@ -49,31 +49,47 @@ export default function Beneficiaries() {
 
   const { beneficiaries, paidInsuredList, isLoading, refetch } = useBeneficiariesData(searchTerm);
 
-  const handleDownloadCard = async (beneficiary: typeof beneficiaries[0]) => {
-    // Fetch full insured data with contract
-    const { data: insuredData } = await supabase
-      .from('insured')
-      .select('*, contracts:contract_id(raison_sociale, contract_number)')
-      .eq('id', beneficiary.insured_id)
-      .single();
+  const handleDownloadCard = async (beneficiary: (typeof beneficiaries)[number]) => {
+    try {
+      // Fetch full insured data with contract
+      const { data: insuredData, error } = await supabase
+        .from('insured')
+        .select(
+          'first_name, last_name, matricule, insurance_start_date, insurance_end_date, contracts:contract_id(raison_sociale, contract_number)',
+        )
+        .eq('id', beneficiary.insured_id)
+        .single();
 
-    const cardData = {
-      ...beneficiary,
-      insured: insuredData ? {
-        first_name: insuredData.first_name,
-        last_name: insuredData.last_name,
-        matricule: insuredData.matricule,
-        insurance_start_date: insuredData.insurance_start_date,
-        insurance_end_date: insuredData.insurance_end_date,
-        contract: insuredData.contracts ? {
-          raison_sociale: insuredData.contracts.raison_sociale,
-          contract_number: insuredData.contracts.contract_number,
-        } : undefined,
-      } : undefined,
-    };
+      if (error) throw error;
 
-    await generateBeneficiaryCardPDF(cardData);
-    toast({ title: 'PDF généré', description: "La carte d'ayant droit a été téléchargée." });
+      const cardData = {
+        ...beneficiary,
+        insured: insuredData
+          ? {
+              first_name: insuredData.first_name,
+              last_name: insuredData.last_name,
+              matricule: insuredData.matricule,
+              insurance_start_date: insuredData.insurance_start_date,
+              insurance_end_date: insuredData.insurance_end_date,
+              contract: insuredData.contracts
+                ? {
+                    raison_sociale: insuredData.contracts.raison_sociale,
+                    contract_number: insuredData.contracts.contract_number,
+                  }
+                : undefined,
+            }
+          : undefined,
+      };
+
+      await generateBeneficiaryCardPDF(cardData);
+      toast({ title: 'Téléchargement', description: "La carte d'ayant droit a été téléchargée." });
+    } catch {
+      toast({
+        title: 'Erreur',
+        description: "Impossible de télécharger la carte.",
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleSave = async () => {
@@ -367,7 +383,12 @@ export default function Beneficiaries() {
                             <Edit className="w-4 h-4 mr-2" />
                             Modifier
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDownloadCard(beneficiary)}>
+                          <DropdownMenuItem
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              void handleDownloadCard(beneficiary);
+                            }}
+                          >
                             <Download className="w-4 h-4 mr-2" />
                             Télécharger la carte
                           </DropdownMenuItem>

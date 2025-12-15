@@ -2434,6 +2434,11 @@ export const generateBeneficiaryCardPDF = async (beneficiary: {
     doc.text(beneficiary.insured.contract.raison_sociale, cardX + 10, cardY + cardHeight - 2);
     doc.text(`Contrat: ${beneficiary.insured.contract.contract_number}`, cardX + cardWidth - 10, cardY + cardHeight - 2, { align: 'right' });
   }
-  
+
+  // Direct download (preview removed)
+  const fileName = `carte-ayant-droit-${beneficiary.id}.pdf`;
+  doc.save(fileName);
+
+  // Keep returning a data URL for backward compatibility (callers may ignore it)
   return doc.output('dataurlstring');
 };
