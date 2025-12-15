@@ -7,7 +7,7 @@ interface DashboardStats {
   totalContracts: number;
   activeInsured: number;
   pendingReimbursements: number;
-  monthlyReimbursementTotal: number;
+  monthlyContributionsTotal: number;
   contractsThisMonth: number;
 }
 
@@ -48,7 +48,7 @@ export function useDashboardData() {
     totalContracts: 0,
     activeInsured: 0,
     pendingReimbursements: 0,
-    monthlyReimbursementTotal: 0,
+    monthlyContributionsTotal: 0,
     contractsThisMonth: 0,
   });
   const [monthlyTrends, setMonthlyTrends] = useState<MonthlyTrend[]>([]);
@@ -93,16 +93,16 @@ export function useDashboardData() {
         .select('*', { count: 'exact', head: true })
         .in('status', ['soumis', 'verification']);
 
-      // Fetch monthly reimbursement total (paid this month)
-      const { data: monthlyReimbursements } = await supabase
-        .from('reimbursements')
-        .select('paid_amount')
-        .eq('status', 'paye')
-        .gte('paid_at', startOfCurrentMonth.toISOString())
-        .lte('paid_at', endOfCurrentMonth.toISOString());
+      // Fetch monthly contributions total (paid this month)
+      const { data: monthlyContributions } = await supabase
+        .from('contributions')
+        .select('paid_amount, payment_date')
+        .in('payment_status', ['paye', 'partiel'])
+        .gte('payment_date', startOfCurrentMonth.toISOString().split('T')[0])
+        .lte('payment_date', endOfCurrentMonth.toISOString().split('T')[0]);
 
-      const monthlyTotal = monthlyReimbursements?.reduce(
-        (sum, r) => sum + (r.paid_amount || 0),
+      const monthlyTotal = monthlyContributions?.reduce(
+        (sum, c) => sum + (c.paid_amount || 0),
         0
       ) || 0;
 
@@ -110,7 +110,7 @@ export function useDashboardData() {
         totalContracts: totalContracts || 0,
         activeInsured: activeInsured || 0,
         pendingReimbursements: pendingReimbursementsCount || 0,
-        monthlyReimbursementTotal: monthlyTotal,
+        monthlyContributionsTotal: monthlyTotal,
         contractsThisMonth: contractsThisMonth || 0,
       });
     } catch (error) {

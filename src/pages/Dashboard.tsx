@@ -110,7 +110,7 @@ export default function Dashboard() {
         />
         <StatCard
           title="Total mensuel payé"
-          value={formatCurrency(stats.monthlyReimbursementTotal)}
+          value={formatCurrency(stats.monthlyContributionsTotal)}
           change="Ce mois"
           changeType="positive"
           icon={TrendingUp}
