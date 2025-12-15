@@ -8,6 +8,7 @@ interface DashboardStats {
   activeInsured: number;
   pendingReimbursements: number;
   monthlyContributionsTotal: number;
+  monthlyReimbursementsTotal: number;
   contractsThisMonth: number;
 }
 
@@ -49,6 +50,7 @@ export function useDashboardData() {
     activeInsured: 0,
     pendingReimbursements: 0,
     monthlyContributionsTotal: 0,
+    monthlyReimbursementsTotal: 0,
     contractsThisMonth: 0,
   });
   const [monthlyTrends, setMonthlyTrends] = useState<MonthlyTrend[]>([]);
@@ -101,8 +103,21 @@ export function useDashboardData() {
         .gte('payment_date', startOfCurrentMonth.toISOString().split('T')[0])
         .lte('payment_date', endOfCurrentMonth.toISOString().split('T')[0]);
 
-      const monthlyTotal = monthlyContributions?.reduce(
+      const contributionsTotal = monthlyContributions?.reduce(
         (sum, c) => sum + (c.paid_amount || 0),
+        0
+      ) || 0;
+
+      // Fetch monthly reimbursements total (paid this month)
+      const { data: monthlyReimbursements } = await supabase
+        .from('reimbursements')
+        .select('paid_amount')
+        .eq('status', 'paye')
+        .gte('paid_at', startOfCurrentMonth.toISOString())
+        .lte('paid_at', endOfCurrentMonth.toISOString());
+
+      const reimbursementsTotal = monthlyReimbursements?.reduce(
+        (sum, r) => sum + (r.paid_amount || 0),
         0
       ) || 0;
 
@@ -110,7 +125,8 @@ export function useDashboardData() {
         totalContracts: totalContracts || 0,
         activeInsured: activeInsured || 0,
         pendingReimbursements: pendingReimbursementsCount || 0,
-        monthlyContributionsTotal: monthlyTotal,
+        monthlyContributionsTotal: contributionsTotal,
+        monthlyReimbursementsTotal: reimbursementsTotal,
         contractsThisMonth: contractsThisMonth || 0,
       });
     } catch (error) {
