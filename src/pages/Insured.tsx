@@ -16,13 +16,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
-import { generateInsuredSummaryPDF, type InsuredSummaryPDFData } from '@/lib/pdfGenerator';
+import { generateInsuredSummaryPDF, generateInsuredCardPDF, type InsuredSummaryPDFData, type InsuredCardPDFData } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
+import { PDFPreview, usePDFPreview } from '@/components/ui/pdf-preview';
 
 export default function Insured() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedInsured, setSelectedInsured] = useState<any>(null);
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+  const pdfPreview = usePDFPreview();
 
   const { insured, isLoading } = useInsuredData({ searchTerm });
 
@@ -91,6 +93,37 @@ export default function Insured() {
         description: 'Impossible de générer le récapitulatif.',
       });
     }
+  };
+
+  const handleDownloadCard = (ins: any) => {
+    const cardData: InsuredCardPDFData = {
+      matricule: ins.matricule,
+      first_name: ins.first_name,
+      last_name: ins.last_name,
+      gender: ins.gender,
+      birth_date: ins.birth_date,
+      birth_place: ins.birth_place,
+      phone: ins.phone,
+      email: ins.email,
+      employer: ins.employer,
+      job_title: ins.job_title,
+      insurance_start_date: ins.insurance_start_date,
+      insurance_end_date: ins.insurance_end_date,
+      status: ins.status,
+      contract: ins.contract ? {
+        contract_number: ins.contract.contract_number,
+        raison_sociale: ins.contract.raison_sociale,
+      } : undefined,
+      photo_url: ins.photo_url,
+    };
+
+    pdfPreview.openPreview(
+      async () => {
+        const result = await generateInsuredCardPDF(cardData, { preview: true });
+        return result as { dataUrl: string; fileName: string };
+      },
+      `Carte d'assuré - ${ins.first_name} ${ins.last_name}`
+    );
   };
 
   if (isLoading) {
@@ -196,9 +229,12 @@ export default function Insured() {
                       Modifier
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="gap-2">
+                    <DropdownMenuItem 
+                      className="gap-2"
+                      onClick={() => handleDownloadCard(ins)}
+                    >
                       <Download className="w-4 h-4" />
-                      Export PDF
+                      Télécharger la carte
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -374,6 +410,16 @@ export default function Insured() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* PDF Preview */}
+      <PDFPreview
+        isOpen={pdfPreview.isOpen}
+        onClose={pdfPreview.closePreview}
+        pdfDataUrl={pdfPreview.pdfDataUrl}
+        fileName={pdfPreview.fileName}
+        title={pdfPreview.title}
+        isLoading={pdfPreview.isLoading}
+      />
     </div>
   );
 }

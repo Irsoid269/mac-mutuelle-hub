@@ -1930,3 +1930,263 @@ export const generateContributionReceiptPDF = async (
   
   doc.save(fileName);
 };
+
+// Generate Insured Card PDF (ID Card format)
+export interface InsuredCardPDFData {
+  matricule: string;
+  first_name: string;
+  last_name: string;
+  gender: string;
+  birth_date: string;
+  birth_place?: string;
+  phone?: string;
+  email?: string;
+  employer?: string;
+  job_title?: string;
+  insurance_start_date: string;
+  insurance_end_date?: string;
+  status: string;
+  contract?: {
+    contract_number: string;
+    raison_sociale: string;
+  };
+  photo_url?: string;
+}
+
+export const generateInsuredCardPDF = async (
+  data: InsuredCardPDFData,
+  options: { preview?: boolean } = {}
+): Promise<{ dataUrl: string; fileName: string } | void> => {
+  await ensureLogo();
+  
+  // Card dimensions (credit card size: 85.6mm x 53.98mm)
+  // We'll scale it up for better readability in PDF
+  const cardWidth = 180;
+  const cardHeight = 113;
+  
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: [cardHeight + 20, cardWidth + 20],
+  });
+  
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  
+  // Center the card
+  const cardX = (pageWidth - cardWidth) / 2;
+  const cardY = (pageHeight - cardHeight) / 2;
+  
+  // Card background with gradient effect
+  doc.setFillColor(...COLORS.white);
+  doc.roundedRect(cardX, cardY, cardWidth, cardHeight, 5, 5, 'F');
+  
+  // Card border
+  doc.setDrawColor(...COLORS.primary);
+  doc.setLineWidth(0.8);
+  doc.roundedRect(cardX, cardY, cardWidth, cardHeight, 5, 5, 'S');
+  
+  // Top accent bar (yellow)
+  doc.setFillColor(...COLORS.accent);
+  doc.roundedRect(cardX, cardY, cardWidth, 4, 5, 5, 'F');
+  doc.setFillColor(...COLORS.white);
+  doc.rect(cardX, cardY + 2, cardWidth, 2, 'F');
+  
+  // Blue header strip
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(cardX, cardY + 4, cardWidth, 20, 'F');
+  
+  // Add logo if available
+  let logoEndX = cardX + 8;
+  if (logoBase64) {
+    try {
+      doc.addImage(logoBase64, 'PNG', cardX + 5, cardY + 6, 16, 14);
+      logoEndX = cardX + 24;
+    } catch {
+      // Fallback
+    }
+  }
+  
+  // Company name in header
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(255, 255, 255);
+  doc.text('MAC ASSURANCES', logoEndX + 2, cardY + 12);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text("Carte d'Assuré", logoEndX + 2, cardY + 18);
+  
+  // Card type indicator on right
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  const cardTypeText = 'ASSURÉ PRINCIPAL';
+  doc.text(cardTypeText, cardX + cardWidth - 8, cardY + 15, { align: 'right' });
+  
+  // Content area
+  const contentY = cardY + 28;
+  const col1X = cardX + 8;
+  const col2X = cardX + 70;
+  
+  // Photo placeholder or initials
+  const photoSize = 28;
+  const photoX = cardX + cardWidth - photoSize - 8;
+  const photoY = contentY;
+  
+  doc.setFillColor(...COLORS.lightGray);
+  doc.roundedRect(photoX, photoY, photoSize, photoSize, 3, 3, 'F');
+  doc.setDrawColor(...COLORS.primary);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(photoX, photoY, photoSize, photoSize, 3, 3, 'S');
+  
+  // Initials in photo placeholder
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(...COLORS.primary);
+  doc.text(
+    `${data.first_name[0]}${data.last_name[0]}`,
+    photoX + photoSize / 2,
+    photoY + photoSize / 2 + 3,
+    { align: 'center' }
+  );
+  
+  // Matricule (prominent)
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(...COLORS.primary);
+  doc.text('N° Matricule', col1X, contentY + 4);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(...COLORS.text);
+  doc.text(data.matricule, col1X, contentY + 11);
+  
+  // Name
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('Nom complet', col1X, contentY + 20);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(...COLORS.text);
+  const fullName = `${data.first_name} ${data.last_name}`;
+  doc.text(fullName.length > 28 ? fullName.substring(0, 28) + '...' : fullName, col1X, contentY + 26);
+  
+  // Birth info
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('Date de naissance', col1X, contentY + 34);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.text);
+  doc.text(formatDate(data.birth_date), col1X, contentY + 40);
+  
+  // Gender
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('Sexe', col1X + 40, contentY + 34);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.text);
+  doc.text(data.gender === 'M' ? 'Masculin' : 'Féminin', col1X + 40, contentY + 40);
+  
+  // Employer
+  if (data.employer) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...COLORS.textLight);
+    doc.text('Employeur', col1X, contentY + 48);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...COLORS.text);
+    const employer = data.employer.length > 35 ? data.employer.substring(0, 35) + '...' : data.employer;
+    doc.text(employer, col1X, contentY + 53);
+  }
+  
+  // Contract info
+  if (data.contract) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...COLORS.textLight);
+    doc.text('N° Contrat', photoX, photoY + photoSize + 6);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...COLORS.text);
+    doc.text(data.contract.contract_number, photoX, photoY + photoSize + 11);
+  }
+  
+  // Bottom section with validity
+  const bottomY = cardY + cardHeight - 18;
+  
+  // Validity dates
+  doc.setFillColor(...COLORS.lightGray);
+  doc.rect(cardX, bottomY, cardWidth, 18, 'F');
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('Valable du:', col1X, bottomY + 6);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.text);
+  doc.text(formatDate(data.insurance_start_date), col1X + 20, bottomY + 6);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('au:', col1X + 50, bottomY + 6);
+  
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.text);
+  doc.text(data.insurance_end_date ? formatDate(data.insurance_end_date) : 'Indéterminé', col1X + 58, bottomY + 6);
+  
+  // Status badge
+  const statusLabels: Record<string, string> = {
+    en_attente: 'En attente',
+    validee: 'Actif',
+    rejetee: 'Inactif',
+    reserve_medicale: 'Réserve',
+  };
+  
+  const statusColors: Record<string, [number, number, number]> = {
+    en_attente: COLORS.warning,
+    validee: COLORS.success,
+    rejetee: COLORS.error,
+    reserve_medicale: COLORS.warning,
+  };
+  
+  const statusColor = statusColors[data.status] || COLORS.secondary;
+  const statusLabel = statusLabels[data.status] || data.status;
+  
+  doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+  doc.roundedRect(cardX + cardWidth - 40, bottomY + 2, 32, 10, 3, 3, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(255, 255, 255);
+  doc.text(statusLabel.toUpperCase(), cardX + cardWidth - 24, bottomY + 8.5, { align: 'center' });
+  
+  // Contact info at bottom
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text('MAC ASSURANCES - Tél: +269 773 00 00 - www.macassurances.com', cardX + cardWidth / 2, bottomY + 15, { align: 'center' });
+  
+  const fileName = `Carte_Assure_${data.matricule}.pdf`;
+  
+  if (options.preview) {
+    const dataUrl = doc.output('dataurlstring');
+    return { dataUrl, fileName };
+  }
+  
+  doc.save(fileName);
+};
