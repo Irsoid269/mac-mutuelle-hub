@@ -24,12 +24,11 @@ const COLORS = {
   error: [239, 68, 68] as [number, number, number],
 };
 
-// Format currency
+// Format currency - using simple formatting for PDF compatibility
 const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('fr-KM', {
-    style: 'decimal',
-    maximumFractionDigits: 0,
-  }).format(amount) + ' KMF';
+  // Use simple space separator for thousands (PDF compatible)
+  const formatted = amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return formatted + ' KMF';
 };
 
 // Format date
@@ -297,8 +296,8 @@ export const generateReimbursementPDF = (data: ReimbursementPDFData): void => {
     head: [['Description', 'Montant']],
     body: [
       ['Montant réclamé', formatCurrency(data.claimed_amount)],
-      ['Montant approuvé', data.approved_amount ? formatCurrency(data.approved_amount) : 'En attente'],
-      ['Montant payé', data.paid_amount ? formatCurrency(data.paid_amount) : 'En attente'],
+      ['Montant approuvé', data.approved_amount != null ? formatCurrency(data.approved_amount) : '—'],
+      ['Montant payé', data.paid_amount != null ? formatCurrency(data.paid_amount) : '—'],
     ],
     theme: 'plain',
     headStyles: {
