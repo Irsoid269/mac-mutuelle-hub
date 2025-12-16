@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { 
   Database, 
   Download, 
@@ -15,7 +18,12 @@ import {
   Loader2,
   FileJson,
   Calendar,
-  HardDrive
+  HardDrive,
+  Clock,
+  History,
+  Settings2,
+  Trash2,
+  XCircle
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -28,6 +36,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from '@/components/ui/badge';
 
 const TABLES_TO_BACKUP = [
   'contracts',
@@ -55,12 +72,100 @@ interface BackupData {
   tables: Record<string, unknown[]>;
 }
 
+interface BackupHistory {
+  id: string;
+  backup_type: string;
+  status: string;
+  tables_count: number;
+  total_rows: number;
+  file_size: number;
+  backup_data: unknown;
+  error_message: string | null;
+  created_at: string;
+}
+
+interface BackupSettings {
+  id: string;
+  is_enabled: boolean;
+  schedule_time: string;
+  retention_days: number;
+  last_backup_at: string | null;
+}
+
 export default function Backup() {
-  const { isAdmin, profile } = useAuth();
+  const { isAdmin, profile, user } = useAuth();
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
-  const [lastBackup, setLastBackup] = useState<string | null>(null);
+  const [backupHistory, setBackupHistory] = useState<BackupHistory[]>([]);
+  const [backupSettings, setBackupSettings] = useState<BackupSettings | null>(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  // Fetch backup history and settings
+  useEffect(() => {
+    if (isAdmin) {
+      fetchBackupHistory();
+      fetchBackupSettings();
+    }
+  }, [isAdmin]);
+
+  const fetchBackupHistory = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('backup_history')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      setBackupHistory(data || []);
+    } catch (error) {
+      console.error('Error fetching backup history:', error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const fetchBackupSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('backup_settings')
+        .select('*')
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      setBackupSettings(data);
+    } catch (error) {
+      console.error('Error fetching backup settings:', error);
+    }
+  };
+
+  const updateBackupSettings = async (updates: Partial<BackupSettings>) => {
+    if (!backupSettings) return;
+    
+    setIsSavingSettings(true);
+    try {
+      const { error } = await supabase
+        .from('backup_settings')
+        .update({
+          ...updates,
+          updated_by: user?.id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', backupSettings.id);
+
+      if (error) throw error;
+      
+      setBackupSettings({ ...backupSettings, ...updates });
+      toast.success('Paramètres sauvegardés');
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      toast.error('Erreur lors de la sauvegarde');
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
 
   if (!isAdmin) {
     return (
@@ -88,6 +193,8 @@ export default function Backup() {
         tables: {}
       };
 
+      let totalRows = 0;
+
       // Fetch data from each table
       for (const tableName of TABLES_TO_BACKUP) {
         try {
@@ -100,6 +207,7 @@ export default function Backup() {
             backupData.tables[tableName] = [];
           } else {
             backupData.tables[tableName] = data || [];
+            totalRows += (data || []).length;
           }
         } catch (err) {
           console.warn(`Table ${tableName} non accessible`);
@@ -119,9 +227,19 @@ export default function Backup() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      setLastBackup(new Date().toLocaleString('fr-FR'));
+      // Save to history
+      await supabase.from('backup_history').insert({
+        backup_type: 'manual',
+        status: 'completed',
+        tables_count: Object.keys(backupData.tables).length,
+        total_rows: totalRows,
+        file_size: blob.size,
+        created_by: user?.id
+      });
+
+      fetchBackupHistory();
       toast.success('Backup créé avec succès', {
-        description: `${Object.keys(backupData.tables).length} tables exportées`
+        description: `${Object.keys(backupData.tables).length} tables, ${totalRows} lignes exportées`
       });
     } catch (error) {
       console.error('Erreur lors du backup:', error);
@@ -169,7 +287,6 @@ export default function Backup() {
         if (!Array.isArray(rows) || rows.length === 0) continue;
 
         try {
-          // Upsert data (insert or update on conflict)
           const { error } = await supabase
             .from(tableName as any)
             .upsert(rows as any[], { 
@@ -200,7 +317,6 @@ export default function Backup() {
       }
 
       setImportFile(null);
-      // Reset file input
       const fileInput = document.getElementById('backup-file') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
 
@@ -212,6 +328,29 @@ export default function Backup() {
     } finally {
       setIsImporting(false);
     }
+  };
+
+  const downloadHistoryBackup = (backup: BackupHistory) => {
+    if (!backup.backup_data) {
+      toast.error('Données de backup non disponibles');
+      return;
+    }
+
+    const blob = new Blob([JSON.stringify(backup.backup_data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `mac-assurance-backup-${backup.created_at.replace(/[:.]/g, '-')}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   return (
@@ -236,14 +375,14 @@ export default function Backup() {
               Créer un Backup
             </CardTitle>
             <CardDescription>
-              Exportez toutes les données de l'application dans un fichier JSON sécurisé
+              Exportez toutes les données dans un fichier JSON
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <HardDrive className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Tables incluses:</span>
+                <span className="text-muted-foreground">Tables:</span>
                 <span className="font-medium">{TABLES_TO_BACKUP.length}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
@@ -251,13 +390,6 @@ export default function Backup() {
                 <span className="text-muted-foreground">Format:</span>
                 <span className="font-medium">JSON</span>
               </div>
-              {lastBackup && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Dernier backup:</span>
-                  <span className="font-medium">{lastBackup}</span>
-                </div>
-              )}
             </div>
 
             <Button 
@@ -288,7 +420,7 @@ export default function Backup() {
               Restaurer un Backup
             </CardTitle>
             <CardDescription>
-              Restaurez les données à partir d'un fichier de sauvegarde précédent
+              Restaurez les données depuis un fichier de sauvegarde
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -309,16 +441,12 @@ export default function Backup() {
               )}
             </div>
 
-            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-              <div className="flex gap-3">
-                <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium text-destructive">Attention</p>
-                  <p className="text-muted-foreground mt-1">
-                    La restauration remplacera les données existantes. 
-                    Assurez-vous d'avoir un backup récent avant de continuer.
-                  </p>
-                </div>
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+              <div className="flex gap-2">
+                <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground">
+                  La restauration remplacera les données existantes.
+                </p>
               </div>
             </div>
 
@@ -332,12 +460,12 @@ export default function Backup() {
                   {isImporting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Restauration en cours...
+                      Restauration...
                     </>
                   ) : (
                     <>
                       <Upload className="w-4 h-4 mr-2" />
-                      Restaurer les données
+                      Restaurer
                     </>
                   )}
                 </Button>
@@ -348,13 +476,12 @@ export default function Backup() {
                   <AlertDialogDescription>
                     Cette action va restaurer les données depuis le fichier de backup.
                     Les données existantes seront mises à jour ou remplacées.
-                    Cette action ne peut pas être annulée.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Annuler</AlertDialogCancel>
                   <AlertDialogAction onClick={handleRestore}>
-                    Confirmer la restauration
+                    Confirmer
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -363,22 +490,177 @@ export default function Backup() {
         </Card>
       </div>
 
-      {/* Info Card */}
+      {/* Scheduled Backup Settings */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Tables sauvegardées</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Settings2 className="w-5 h-5 text-primary" />
+            Backup Automatique Quotidien
+          </CardTitle>
+          <CardDescription>
+            Configurez les sauvegardes automatiques planifiées
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {backupSettings ? (
+            <>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="auto-backup">Activer les backups automatiques</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Un backup sera créé automatiquement chaque jour
+                  </p>
+                </div>
+                <Switch
+                  id="auto-backup"
+                  checked={backupSettings.is_enabled}
+                  onCheckedChange={(checked) => updateBackupSettings({ is_enabled: checked })}
+                  disabled={isSavingSettings}
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="schedule-time" className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Heure du backup
+                  </Label>
+                  <Input
+                    id="schedule-time"
+                    type="time"
+                    value={backupSettings.schedule_time?.slice(0, 5) || '02:00'}
+                    onChange={(e) => updateBackupSettings({ schedule_time: e.target.value + ':00' })}
+                    disabled={isSavingSettings || !backupSettings.is_enabled}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="retention-days" className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Rétention (jours)
+                  </Label>
+                  <Input
+                    id="retention-days"
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={backupSettings.retention_days}
+                    onChange={(e) => updateBackupSettings({ retention_days: parseInt(e.target.value) || 30 })}
+                    disabled={isSavingSettings || !backupSettings.is_enabled}
+                  />
+                </div>
+              </div>
+
+              {backupSettings.last_backup_at && (
+                <div className="bg-muted/50 rounded-lg p-3 flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  <span className="text-muted-foreground">Dernier backup automatique:</span>
+                  <span className="font-medium">
+                    {format(new Date(backupSettings.last_backup_at), 'dd MMM yyyy à HH:mm', { locale: fr })}
+                  </span>
+                </div>
+              )}
+
+              {backupSettings.is_enabled && (
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Note:</strong> Les backups automatiques nécessitent que le cron job soit configuré 
+                    dans votre instance Supabase pour appeler l'edge function <code className="bg-muted px-1 rounded">scheduled-backup</code> quotidiennement.
+                  </p>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Backup History */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="w-5 h-5 text-primary" />
+            Historique des Backups
+          </CardTitle>
+          <CardDescription>
+            Les 20 derniers backups effectués
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {TABLES_TO_BACKUP.map((table) => (
-              <div 
-                key={table}
-                className="bg-muted/50 rounded px-3 py-2 text-sm font-mono"
-              >
-                {table}
-              </div>
-            ))}
-          </div>
+          {isLoadingHistory ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : backupHistory.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Aucun backup effectué
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Tables</TableHead>
+                    <TableHead>Lignes</TableHead>
+                    <TableHead>Taille</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {backupHistory.map((backup) => (
+                    <TableRow key={backup.id}>
+                      <TableCell className="font-medium">
+                        {format(new Date(backup.created_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={backup.backup_type === 'scheduled' ? 'secondary' : 'outline'}>
+                          {backup.backup_type === 'scheduled' ? 'Auto' : 'Manuel'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {backup.status === 'completed' ? (
+                          <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            Terminé
+                          </Badge>
+                        ) : backup.status === 'failed' ? (
+                          <Badge variant="destructive">
+                            <XCircle className="w-3 h-3 mr-1" />
+                            Échoué
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                            En cours
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>{backup.tables_count}</TableCell>
+                      <TableCell>{backup.total_rows?.toLocaleString()}</TableCell>
+                      <TableCell>{formatFileSize(backup.file_size || 0)}</TableCell>
+                      <TableCell className="text-right">
+                        {backup.backup_data && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => downloadHistoryBackup(backup)}
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -56,6 +56,75 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_history: {
+        Row: {
+          backup_data: Json | null
+          backup_type: string
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          file_size: number | null
+          id: string
+          status: string
+          tables_count: number | null
+          total_rows: number | null
+        }
+        Insert: {
+          backup_data?: Json | null
+          backup_type?: string
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          file_size?: number | null
+          id?: string
+          status?: string
+          tables_count?: number | null
+          total_rows?: number | null
+        }
+        Update: {
+          backup_data?: Json | null
+          backup_type?: string
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          file_size?: number | null
+          id?: string
+          status?: string
+          tables_count?: number | null
+          total_rows?: number | null
+        }
+        Relationships: []
+      }
+      backup_settings: {
+        Row: {
+          id: string
+          is_enabled: boolean
+          last_backup_at: string | null
+          retention_days: number
+          schedule_time: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          is_enabled?: boolean
+          last_backup_at?: string | null
+          retention_days?: number
+          schedule_time?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          is_enabled?: boolean
+          last_backup_at?: string | null
+          retention_days?: number
+          schedule_time?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       beneficiaries: {
         Row: {
           address: string | null
