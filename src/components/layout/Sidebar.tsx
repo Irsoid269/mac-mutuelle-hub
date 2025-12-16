@@ -24,6 +24,7 @@ import {
   Wallet,
   UserCog,
   Building2,
+  Database,
 } from 'lucide-react';
 
 type AppRole = 'admin' | 'agent' | 'medecin' | 'comptabilite' | 'dirigeant';
@@ -50,6 +51,7 @@ const navItems: NavItem[] = [
 const adminItems: NavItem[] = [
   { path: '/users', icon: UserCog, label: 'Utilisateurs', adminOnly: true },
   { path: '/audit', icon: Shield, label: 'Audit Log', allowedRoles: ['admin', 'dirigeant'] },
+  { path: '/backup', icon: Database, label: 'Backup', adminOnly: true },
   { path: '/settings', icon: Settings, label: 'Paramètres', adminOnly: true },
 ];
 
