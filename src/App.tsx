@@ -18,6 +18,7 @@ import Documents from "./pages/Documents";
 import AuditLog from "./pages/AuditLog";
 import Settings from "./pages/Settings";
 import Users from "./pages/Users";
+import Backup from "./pages/Backup";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -111,6 +112,13 @@ function AppContent() {
           <Route path="/audit" element={
             <ProtectedRoute allowedRoles={['admin', 'dirigeant']}>
               <AuditLog />
+            </ProtectedRoute>
+          } />
+          
+          {/* Backup - admin uniquement */}
+          <Route path="/backup" element={
+            <ProtectedRoute requiredRole="admin">
+              <Backup />
             </ProtectedRoute>
           } />
           
