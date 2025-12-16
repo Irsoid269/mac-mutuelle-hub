@@ -52,7 +52,15 @@ VITE_SUPABASE_PUBLISHABLE_KEY="votre_ANON_KEY_locale"
 
 1. Ouvrez Supabase Studio : http://localhost:54323
 2. Allez dans **SQL Editor**
-3. Exécutez les migrations présentes dans `supabase/migrations/`
+3. Copiez et exécutez le contenu du fichier `supabase/schema_complet.sql`
+
+Ce fichier contient tout le schéma de la base de données :
+- Types énumérés
+- Tables
+- Fonctions
+- Triggers
+- Politiques RLS
+- Bucket de stockage
 
 ## Étape 6 : Créer un utilisateur admin
 
