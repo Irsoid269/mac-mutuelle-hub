@@ -80,7 +80,54 @@ VITE_SUPABASE_PUBLISHABLE_KEY="VOTRE_ANON_KEY_ICI"
 
 **Remplacez `VOTRE_ANON_KEY_ICI` par la clé ANON_KEY du fichier `.env` de Supabase.**
 
-## Étape 7 : Importer le schéma de base de données
+## Étape 7 : Migrer les données du Cloud vers le Local
+
+### Option A : Via Supabase Studio (Export CSV)
+
+1. **Sur Supabase Cloud** (https://supabase.com/dashboard) :
+   - Allez dans **Table Editor**
+   - Pour chaque table, cliquez sur **Export to CSV**
+   - Téléchargez tous les fichiers CSV
+
+2. **Sur Supabase Local** (http://localhost:54323) :
+   - Allez dans **Table Editor**
+   - Pour chaque table, cliquez sur **Import data from CSV**
+   - Importez les fichiers CSV correspondants
+
+### Option B : Via pg_dump/pg_restore (Recommandé pour beaucoup de données)
+
+```bash
+# 1. Exporter depuis Supabase Cloud
+# Récupérez l'URL de connexion depuis : Dashboard > Settings > Database > Connection string
+
+pg_dump "postgresql://postgres:[MOT_DE_PASSE]@db.albtlsmipwjqnducydpy.supabase.co:5432/postgres" \
+  --data-only \
+  --exclude-table=auth.* \
+  --exclude-table=storage.* \
+  -f export_data.sql
+
+# 2. Importer dans Supabase Local
+psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f export_data.sql
+```
+
+### Option C : Script SQL direct
+
+Dans Supabase Studio Cloud, exécutez ce SQL pour générer les INSERT :
+
+```sql
+-- Générer les commandes INSERT pour chaque table
+-- Copiez le résultat et exécutez-le en local
+
+-- Exemple pour la table contracts
+SELECT 'INSERT INTO contracts VALUES (' || 
+  quote_literal(id) || ',' ||
+  quote_literal(contract_number) || ',' ||
+  -- ... autres colonnes
+  ');'
+FROM contracts;
+```
+
+## Étape 8 : Importer le schéma de base de données
 
 1. Ouvrez Supabase Studio : http://localhost:54323
 2. Allez dans **SQL Editor**
