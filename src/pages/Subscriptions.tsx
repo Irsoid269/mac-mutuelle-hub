@@ -26,13 +26,19 @@ import { fr } from 'date-fns/locale';
 import { generateSubscriptionPDF, generateSubscriptionSummaryPDF, type SubscriptionPDFData, type SubscriptionSummaryPDFData } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { auditLog } from '@/lib/auditLog';
 
 
 export default function Subscriptions() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
-  
+  const [selectedContract, setSelectedContract] = useState<any>(null);
+  const [contractInsured, setContractInsured] = useState<any[]>([]);
+  const [contractBeneficiaries, setContractBeneficiaries] = useState<any[]>([]);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const { contracts, stats, isLoading, isOnline, refetch } = useContractsDataOffline(searchTerm, statusFilter);
 
@@ -40,6 +46,46 @@ export default function Subscriptions() {
     if (!insuredList || insuredList.length === 0) return 'N/A';
     const first = insuredList[0];
     return `${first.first_name} ${first.last_name}`;
+  };
+
+  const handleViewDetails = async (contract: any) => {
+    setSelectedContract(contract);
+    
+    // Fetch insured data
+    const { data: insuredData } = await supabase
+      .from('insured')
+      .select('*')
+      .eq('contract_id', contract.id);
+    setContractInsured(insuredData || []);
+
+    // Fetch beneficiaries
+    if (insuredData && insuredData.length > 0) {
+      const { data: beneficiaries } = await supabase
+        .from('beneficiaries')
+        .select('*')
+        .in('insured_id', insuredData.map(i => i.id));
+      setContractBeneficiaries(beneficiaries || []);
+    } else {
+      setContractBeneficiaries([]);
+    }
+
+    setIsViewOpen(true);
+    
+    // Log audit
+    auditLog.create('contract', `Consultation du contrat ${contract.contract_number}`, contract.id);
+  };
+
+  const handleEditContract = async (contract: any) => {
+    setSelectedContract(contract);
+    
+    // Fetch insured data
+    const { data: insuredData } = await supabase
+      .from('insured')
+      .select('*')
+      .eq('contract_id', contract.id);
+    setContractInsured(insuredData || []);
+
+    setIsEditOpen(true);
   };
 
   const handleGeneratePDF = async (contract: any) => {
@@ -75,6 +121,9 @@ export default function Subscriptions() {
 
     generateSubscriptionPDF(pdfData);
     toast.success('PDF généré', { description: "L'attestation de souscription a été téléchargée." });
+    
+    // Log audit
+    auditLog.export('contract', 1);
   };
 
   const handleGenerateSummaryPDF = () => {
@@ -99,6 +148,24 @@ export default function Subscriptions() {
 
     generateSubscriptionSummaryPDF(summaryData);
     toast.success('PDF généré', { description: 'Le récapitulatif a été téléchargé.' });
+    
+    // Log audit
+    auditLog.export('contract', contracts.length);
+  };
+
+  const statusLabels: Record<string, string> = {
+    en_attente: 'En attente',
+    validee: 'Validé',
+    rejetee: 'Rejeté',
+    reserve_medicale: 'Réserve médicale',
+  };
+
+  const maritalStatusLabels: Record<string, string> = {
+    marie: 'Marié(e)',
+    celibataire: 'Célibataire',
+    veuf: 'Veuf(ve)',
+    divorce: 'Divorcé(e)',
+    separe: 'Séparé(e)',
   };
 
   if (isLoading) {
@@ -235,11 +302,11 @@ export default function Subscriptions() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem className="gap-2">
+                          <DropdownMenuItem className="gap-2" onClick={() => handleViewDetails(contract)}>
                             <Eye className="w-4 h-4" />
                             Voir détails
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2">
+                          <DropdownMenuItem className="gap-2" onClick={() => handleEditContract(contract)}>
                             <Edit className="w-4 h-4" />
                             Modifier
                           </DropdownMenuItem>
@@ -259,6 +326,301 @@ export default function Subscriptions() {
         </div>
       </div>
 
+      {/* View Details Dialog */}
+      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Détails du Contrat</DialogTitle>
+          </DialogHeader>
+          {selectedContract && (
+            <Tabs defaultValue="contract">
+              <TabsList>
+                <TabsTrigger value="contract">Contrat</TabsTrigger>
+                <TabsTrigger value="insured">Assurés ({contractInsured.length})</TabsTrigger>
+                <TabsTrigger value="beneficiaries">Ayants droit ({contractBeneficiaries.length})</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="contract" className="mt-4 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground">N° Contrat</p>
+                    <p className="font-mono font-medium">{selectedContract.contract_number}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Code Client</p>
+                    <p className="font-mono font-medium">{selectedContract.client_code}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50 col-span-2">
+                    <p className="text-xs text-muted-foreground">Raison Sociale</p>
+                    <p className="font-medium">{selectedContract.raison_sociale}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Statut</p>
+                    <StatusBadge status={selectedContract.status as any} />
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Date de début</p>
+                    <p className="font-medium">{format(new Date(selectedContract.start_date), 'dd/MM/yyyy', { locale: fr })}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Téléphone</p>
+                    <p className="font-medium">{selectedContract.phone || '-'}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Email</p>
+                    <p className="font-medium">{selectedContract.email || '-'}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50 col-span-2">
+                    <p className="text-xs text-muted-foreground">Adresse</p>
+                    <p className="font-medium">{selectedContract.address || '-'}</p>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="insured" className="mt-4">
+                <div className="space-y-3">
+                  {contractInsured.length > 0 ? (
+                    contractInsured.map((ins) => (
+                      <div key={ins.id} className="p-4 rounded-lg border border-border">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-sm font-bold text-primary">
+                              {ins.first_name[0]}{ins.last_name[0]}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium">{ins.first_name} {ins.last_name}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{ins.matricule}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Date de naissance:</span>{' '}
+                            {format(new Date(ins.birth_date), 'dd/MM/yyyy', { locale: fr })}
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Statut:</span>{' '}
+                            {statusLabels[ins.status] || ins.status}
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Téléphone:</span>{' '}
+                            {ins.phone || '-'}
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Email:</span>{' '}
+                            {ins.email || '-'}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">Aucun assuré</p>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="beneficiaries" className="mt-4">
+                <div className="space-y-3">
+                  {contractBeneficiaries.length > 0 ? (
+                    contractBeneficiaries.map((ben) => (
+                      <div key={ben.id} className="flex items-center justify-between p-4 rounded-lg border border-border">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+                            <span className="text-sm font-medium text-secondary-foreground">
+                              {ben.first_name[0]}{ben.last_name[0]}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium">{ben.first_name} {ben.last_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {ben.relationship === 'enfant' ? 'Enfant' : 
+                               ben.relationship === 'conjoint' ? 'Conjoint(e)' :
+                               ben.relationship === 'parent' ? 'Parent' : 'Autre'}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {ben.gender === 'M' ? 'Masculin' : 'Féminin'}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">Aucun ayant droit</p>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Modifier le Contrat</DialogTitle>
+          </DialogHeader>
+          {selectedContract && (
+            <EditContractForm 
+              contract={selectedContract} 
+              insured={contractInsured[0]}
+              onClose={() => { 
+                setIsEditOpen(false); 
+                refetch(); 
+              }} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+// Edit Contract Form Component
+function EditContractForm({ contract, insured, onClose }: { contract: any; insured: any; onClose: () => void }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [raisonSociale, setRaisonSociale] = useState(contract.raison_sociale || '');
+  const [contractPhone, setContractPhone] = useState(contract.phone || '');
+  const [contractEmail, setContractEmail] = useState(contract.email || '');
+  const [contractAddress, setContractAddress] = useState(contract.address || '');
+  const [status, setStatus] = useState(contract.status || 'en_attente');
+  
+  // Insured fields
+  const [firstName, setFirstName] = useState(insured?.first_name || '');
+  const [lastName, setLastName] = useState(insured?.last_name || '');
+  const [insuredPhone, setInsuredPhone] = useState(insured?.phone || '');
+  const [insuredEmail, setInsuredEmail] = useState(insured?.email || '');
+  const [employer, setEmployer] = useState(insured?.employer || '');
+  const [jobTitle, setJobTitle] = useState(insured?.job_title || '');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      // Update contract
+      const { error: contractError } = await supabase
+        .from('contracts')
+        .update({
+          raison_sociale: raisonSociale,
+          phone: contractPhone || null,
+          email: contractEmail || null,
+          address: contractAddress || null,
+          status: status as any,
+        })
+        .eq('id', contract.id);
+
+      if (contractError) throw contractError;
+
+      // Update insured if exists
+      if (insured) {
+        const { error: insuredError } = await supabase
+          .from('insured')
+          .update({
+            first_name: firstName,
+            last_name: lastName,
+            phone: insuredPhone || null,
+            email: insuredEmail || null,
+            employer: employer || null,
+            job_title: jobTitle || null,
+            status: status as any,
+          })
+          .eq('id', insured.id);
+
+        if (insuredError) throw insuredError;
+      }
+
+      // Log audit
+      auditLog.update('contract', `Contrat ${contract.contract_number}`, contract.id);
+
+      toast.success('Contrat mis à jour');
+      onClose();
+    } catch (error: any) {
+      console.error('Error updating contract:', error);
+      toast.error(error.message || 'Erreur lors de la mise à jour');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Informations du Contrat</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium">Raison Sociale *</label>
+            <Input value={raisonSociale} onChange={(e) => setRaisonSociale(e.target.value)} required />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Statut</label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en_attente">En attente</SelectItem>
+                <SelectItem value="validee">Validée</SelectItem>
+                <SelectItem value="rejetee">Rejetée</SelectItem>
+                <SelectItem value="reserve_medicale">Réserve médicale</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-sm font-medium">Téléphone</label>
+            <Input value={contractPhone} onChange={(e) => setContractPhone(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Email</label>
+            <Input type="email" value={contractEmail} onChange={(e) => setContractEmail(e.target.value)} />
+          </div>
+          <div className="col-span-2">
+            <label className="text-sm font-medium">Adresse</label>
+            <Input value={contractAddress} onChange={(e) => setContractAddress(e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      {insured && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Informations de l'Assuré Principal</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium">Prénom *</label>
+              <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Nom *</label>
+              <Input value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Téléphone</label>
+              <Input value={insuredPhone} onChange={(e) => setInsuredPhone(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Email</label>
+              <Input type="email" value={insuredEmail} onChange={(e) => setInsuredEmail(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Employeur</label>
+              <Input value={employer} onChange={(e) => setEmployer(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Poste</label>
+              <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-end gap-3">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Annuler
+        </Button>
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? 'Enregistrement...' : 'Enregistrer'}
+        </Button>
+      </div>
+    </form>
   );
 }

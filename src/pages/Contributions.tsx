@@ -24,6 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { generateContributionReceiptPDF, ContributionReceiptPDFData } from '@/lib/pdfGenerator';
+import { auditLog } from '@/lib/auditLog';
 
 import {
   Table,
@@ -185,6 +186,11 @@ export default function Contributions() {
         period_end: formData.period_end,
         notes: formData.notes || undefined,
       });
+      
+      // Log audit
+      const selectedContract = contracts.find(c => c.id === formData.contract_id);
+      auditLog.create('contribution', `Nouvelle cotisation pour ${selectedContract?.raison_sociale || 'N/A'} - ${formData.amount} KMF`);
+      
       toast({
         title: 'Cotisation créée',
         description: 'La cotisation a été enregistrée avec succès.',
@@ -216,6 +222,9 @@ export default function Contributions() {
         selectedContribution.contract_id,
         selectedContribution.paid_amount
       );
+
+      // Log audit
+      auditLog.payment('contribution', `Paiement cotisation ${selectedContribution.contract?.raison_sociale || 'N/A'}`, newPaidAmount, selectedContribution.id);
 
       toast({
         title: 'Paiement enregistré',
