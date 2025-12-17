@@ -9,6 +9,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useInsuredDataOffline } from '@/hooks/useInsuredDataOffline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,15 +25,17 @@ import { fr } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { generateInsuredSummaryPDF, generateInsuredCardPDF, type InsuredSummaryPDFData, type InsuredCardPDFData } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
+import { auditLog } from '@/lib/auditLog';
 
 
 export default function Insured() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedInsured, setSelectedInsured] = useState<any>(null);
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
-  
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingInsured, setEditingInsured] = useState<any>(null);
 
-  const { insured, isLoading, isOnline } = useInsuredDataOffline({ searchTerm });
+  const { insured, isLoading, isOnline, refetch } = useInsuredDataOffline({ searchTerm });
 
   const fetchFamilyMembers = async (insuredId: string) => {
     const { data } = await supabase
@@ -39,6 +48,14 @@ export default function Insured() {
   const handleViewInsured = (ins: any) => {
     setSelectedInsured(ins);
     fetchFamilyMembers(ins.id);
+    
+    // Log audit
+    auditLog.create('insured', `Consultation de l'assuré ${ins.first_name} ${ins.last_name}`, ins.id);
+  };
+
+  const handleEditInsured = (ins: any) => {
+    setEditingInsured(ins);
+    setIsEditOpen(true);
   };
 
   const maritalStatusLabels: Record<string, string> = {
@@ -85,6 +102,9 @@ export default function Insured() {
 
     generateInsuredSummaryPDF(summaryData);
     toast.success('PDF généré', { description: 'Le récapitulatif a été téléchargé.' });
+    
+    // Log audit
+    auditLog.export('insured', insured.length);
   };
 
   const handleDownloadCard = (ins: any) => {
@@ -211,7 +231,10 @@ export default function Insured() {
                       <Eye className="w-4 h-4" />
                       Voir fiche
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="gap-2">
+                    <DropdownMenuItem 
+                      className="gap-2"
+                      onClick={() => handleEditInsured(ins)}
+                    >
                       <Edit className="w-4 h-4" />
                       Modifier
                     </DropdownMenuItem>
@@ -398,6 +421,135 @@ export default function Insured() {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Modifier l'Assuré</DialogTitle>
+          </DialogHeader>
+          {editingInsured && (
+            <EditInsuredForm 
+              insured={editingInsured} 
+              onClose={() => { 
+                setIsEditOpen(false); 
+                refetch(); 
+              }} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+// Edit Insured Form Component
+function EditInsuredForm({ insured, onClose }: { insured: any; onClose: () => void }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [firstName, setFirstName] = useState(insured.first_name || '');
+  const [lastName, setLastName] = useState(insured.last_name || '');
+  const [phone, setPhone] = useState(insured.phone || '');
+  const [email, setEmail] = useState(insured.email || '');
+  const [employer, setEmployer] = useState(insured.employer || '');
+  const [jobTitle, setJobTitle] = useState(insured.job_title || '');
+  const [address, setAddress] = useState(insured.address || '');
+  const [birthPlace, setBirthPlace] = useState(insured.birth_place || '');
+  const [maritalStatus, setMaritalStatus] = useState(insured.marital_status || 'celibataire');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase
+        .from('insured')
+        .update({
+          first_name: firstName,
+          last_name: lastName,
+          phone: phone || null,
+          email: email || null,
+          employer: employer || null,
+          job_title: jobTitle || null,
+          address: address || null,
+          birth_place: birthPlace || null,
+          marital_status: maritalStatus as any,
+        })
+        .eq('id', insured.id);
+
+      if (error) throw error;
+
+      // Log audit
+      auditLog.update('insured', `${firstName} ${lastName}`, insured.id);
+
+      toast.success('Assuré mis à jour');
+      onClose();
+    } catch (error: any) {
+      console.error('Error updating insured:', error);
+      toast.error(error.message || 'Erreur lors de la mise à jour');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium">Prénom *</label>
+          <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Nom *</label>
+          <Input value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Téléphone</label>
+          <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Email</label>
+          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Lieu de naissance</label>
+          <Input value={birthPlace} onChange={(e) => setBirthPlace(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Situation matrimoniale</label>
+          <Select value={maritalStatus} onValueChange={setMaritalStatus}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="celibataire">Célibataire</SelectItem>
+              <SelectItem value="marie">Marié(e)</SelectItem>
+              <SelectItem value="divorce">Divorcé(e)</SelectItem>
+              <SelectItem value="veuf">Veuf(ve)</SelectItem>
+              <SelectItem value="separe">Séparé(e)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label className="text-sm font-medium">Employeur</label>
+          <Input value={employer} onChange={(e) => setEmployer(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Poste</label>
+          <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
+        </div>
+        <div className="col-span-2">
+          <label className="text-sm font-medium">Adresse</label>
+          <Input value={address} onChange={(e) => setAddress(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-3">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Annuler
+        </Button>
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? 'Enregistrement...' : 'Enregistrer'}
+        </Button>
+      </div>
+    </form>
   );
 }

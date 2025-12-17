@@ -73,12 +73,37 @@ export function useDocumentsData(searchTerm?: string, categoryFilter?: string) {
   // Download document
   const downloadDocument = async (doc: Document) => {
     try {
-      // If it's a Supabase storage URL, get signed URL
-      if (doc.file_url.includes('supabase')) {
+      // Check if it's a Supabase storage URL
+      if (doc.file_url.includes('supabase') || doc.file_url.includes('storage')) {
+        // Extract the path from the URL - handle different URL formats
+        let storagePath = '';
+        
+        // Try to extract path from full URL
+        const urlParts = doc.file_url.split('/storage/v1/object/public/');
+        if (urlParts.length > 1) {
+          // Format: bucket/path
+          const bucketAndPath = urlParts[1];
+          const firstSlashIndex = bucketAndPath.indexOf('/');
+          if (firstSlashIndex > -1) {
+            storagePath = bucketAndPath.substring(firstSlashIndex + 1);
+            const bucketName = bucketAndPath.substring(0, firstSlashIndex);
+            
+            const { data } = await supabase.storage
+              .from(bucketName)
+              .createSignedUrl(storagePath, 3600);
+            
+            if (data?.signedUrl) {
+              window.open(data.signedUrl, '_blank');
+              return;
+            }
+          }
+        }
+        
+        // Try with reimbursement-documents bucket as fallback
         const path = doc.file_url.split('/').pop();
         if (path) {
           const { data } = await supabase.storage
-            .from('documents')
+            .from('reimbursement-documents')
             .createSignedUrl(path, 3600);
           
           if (data?.signedUrl) {
@@ -87,7 +112,8 @@ export function useDocumentsData(searchTerm?: string, categoryFilter?: string) {
           }
         }
       }
-      // Otherwise, just open the URL
+      
+      // For external URLs or if signed URL failed, just open directly
       window.open(doc.file_url, '_blank');
     } catch (error) {
       console.error('Error downloading document:', error);

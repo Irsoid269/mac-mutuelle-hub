@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { User, Users, Heart, FileText, Loader2, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { generateFicheSubscriptionPDF, FicheSubscriptionPDFData } from '@/lib/pdfGenerator';
+import { auditLog } from '@/lib/auditLog';
 
 interface SubscriptionFormProps {
   onClose: () => void;
@@ -274,6 +275,9 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
 
         if (declarationsError) console.error('Error creating health declarations:', declarationsError);
       }
+
+      // Log audit
+      auditLog.create('contract', `Nouvelle souscription ${contractNumber} - ${raisonSociale}`, contractData.id);
 
       toast.success(`Souscription créée - Matricule: ${matricule}`);
 
