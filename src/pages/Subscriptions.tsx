@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Filter, Download, Eye, Edit, MoreHorizontal, FileText } from 'lucide-react';
+import { Plus, Search, Filter, Download, Eye, Edit, MoreHorizontal, FileText, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -19,6 +19,7 @@ import {
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useContractsDataOffline } from '@/hooks/useContractsDataOffline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { SubscriptionForm } from '@/components/forms/SubscriptionForm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
@@ -39,6 +40,8 @@ export default function Subscriptions() {
   const [contractBeneficiaries, setContractBeneficiaries] = useState<any[]>([]);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [contractToDelete, setContractToDelete] = useState<any>(null);
 
   const { contracts, stats, isLoading, isOnline, refetch } = useContractsDataOffline(searchTerm, statusFilter);
 
@@ -86,6 +89,47 @@ export default function Subscriptions() {
     setContractInsured(insuredData || []);
 
     setIsEditOpen(true);
+  };
+
+  const handleDeleteContract = (contract: any) => {
+    setContractToDelete(contract);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteContract = async () => {
+    if (!contractToDelete) return;
+    
+    try {
+      // First delete all beneficiaries linked to insured of this contract
+      const { data: insuredData } = await supabase
+        .from('insured')
+        .select('id')
+        .eq('contract_id', contractToDelete.id);
+      
+      if (insuredData && insuredData.length > 0) {
+        const insuredIds = insuredData.map(i => i.id);
+        await supabase.from('beneficiaries').delete().in('insured_id', insuredIds);
+        await supabase.from('insured').delete().eq('contract_id', contractToDelete.id);
+      }
+      
+      // Delete contributions linked to this contract
+      await supabase.from('contributions').delete().eq('contract_id', contractToDelete.id);
+      
+      // Delete the contract
+      const { error } = await supabase.from('contracts').delete().eq('id', contractToDelete.id);
+      
+      if (error) throw error;
+      
+      toast.success('Suppression réussie', { description: `Le contrat ${contractToDelete.contract_number} a été supprimé.` });
+      auditLog.delete('contract', `Suppression du contrat ${contractToDelete.contract_number}`, contractToDelete.id);
+      refetch();
+    } catch (error) {
+      console.error('Error deleting contract:', error);
+      toast.error('Erreur', { description: 'Impossible de supprimer le contrat.' });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setContractToDelete(null);
+    }
   };
 
   const handleGeneratePDF = async (contract: any) => {
@@ -315,6 +359,14 @@ export default function Subscriptions() {
                             <FileText className="w-4 h-4" />
                             Télécharger PDF
                           </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            className="gap-2 text-destructive focus:text-destructive" 
+                            onClick={() => handleDeleteContract(contract)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Supprimer
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
@@ -472,6 +524,25 @@ export default function Subscriptions() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer le contrat <strong>{contractToDelete?.contract_number}</strong> de <strong>{contractToDelete?.raison_sociale}</strong> ? 
+              Cette action est irréversible et supprimera également tous les assurés, ayants droit et cotisations associés.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteContract} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
