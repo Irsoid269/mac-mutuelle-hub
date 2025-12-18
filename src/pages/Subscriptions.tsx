@@ -27,6 +27,7 @@ import { fr } from 'date-fns/locale';
 import { generateSubscriptionPDF, generateSubscriptionSummaryPDF, type SubscriptionPDFData, type SubscriptionSummaryPDFData } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { offlineDb } from '@/lib/offlineDb';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { auditLog } from '@/lib/auditLog';
 
@@ -110,15 +111,23 @@ export default function Subscriptions() {
         const insuredIds = insuredData.map(i => i.id);
         await supabase.from('beneficiaries').delete().in('insured_id', insuredIds);
         await supabase.from('insured').delete().eq('contract_id', contractToDelete.id);
+        
+        // Delete from IndexedDB
+        for (const insuredId of insuredIds) {
+          await offlineDb.insured.delete(insuredId);
+        }
       }
       
       // Delete contributions linked to this contract
       await supabase.from('contributions').delete().eq('contract_id', contractToDelete.id);
       
-      // Delete the contract
+      // Delete the contract from Supabase
       const { error } = await supabase.from('contracts').delete().eq('id', contractToDelete.id);
       
       if (error) throw error;
+      
+      // Also delete from local IndexedDB
+      await offlineDb.contracts.delete(contractToDelete.id);
       
       toast.success('Suppression réussie', { description: `Le contrat ${contractToDelete.contract_number} a été supprimé.` });
       auditLog.delete('contract', `Suppression du contrat ${contractToDelete.contract_number}`, contractToDelete.id);
