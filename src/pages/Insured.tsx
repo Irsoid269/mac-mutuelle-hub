@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Download, Eye, Edit, MoreHorizontal, Phone, Mail, MapPin, CheckCircle, XCircle, Info, FileText } from 'lucide-react';
+import { Search, Download, Eye, Edit, MoreHorizontal, Phone, Mail, MapPin, CheckCircle, XCircle, Info, FileText, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { useInsuredDataOffline } from '@/hooks/useInsuredDataOffline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
@@ -34,6 +35,8 @@ export default function Insured() {
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingInsured, setEditingInsured] = useState<any>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [insuredToDelete, setInsuredToDelete] = useState<any>(null);
 
   const { insured, isLoading, isOnline, refetch } = useInsuredDataOffline({ searchTerm });
 
@@ -56,6 +59,38 @@ export default function Insured() {
   const handleEditInsured = (ins: any) => {
     setEditingInsured(ins);
     setIsEditOpen(true);
+  };
+
+  const handleDeleteInsured = (ins: any) => {
+    setInsuredToDelete(ins);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteInsured = async () => {
+    if (!insuredToDelete) return;
+    
+    try {
+      // First delete all beneficiaries linked to this insured
+      await supabase.from('beneficiaries').delete().eq('insured_id', insuredToDelete.id);
+      
+      // Delete reimbursements linked to this insured
+      await supabase.from('reimbursements').delete().eq('insured_id', insuredToDelete.id);
+      
+      // Delete the insured
+      const { error } = await supabase.from('insured').delete().eq('id', insuredToDelete.id);
+      
+      if (error) throw error;
+      
+      toast.success('Suppression réussie', { description: `L'assuré ${insuredToDelete.first_name} ${insuredToDelete.last_name} a été supprimé.` });
+      auditLog.delete('insured', `Suppression de l'assuré ${insuredToDelete.first_name} ${insuredToDelete.last_name}`, insuredToDelete.id);
+      refetch();
+    } catch (error) {
+      console.error('Error deleting insured:', error);
+      toast.error('Erreur', { description: "Impossible de supprimer l'assuré." });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setInsuredToDelete(null);
+    }
   };
 
   const maritalStatusLabels: Record<string, string> = {
@@ -245,6 +280,14 @@ export default function Insured() {
                     >
                       <Download className="w-4 h-4" />
                       Télécharger la carte
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      className="gap-2 text-destructive focus:text-destructive"
+                      onClick={() => handleDeleteInsured(ins)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Supprimer
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -438,6 +481,25 @@ export default function Insured() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer l'assuré <strong>{insuredToDelete?.first_name} {insuredToDelete?.last_name}</strong> ? 
+              Cette action est irréversible et supprimera également tous les ayants droit et remboursements associés.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteInsured} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
