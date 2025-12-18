@@ -24,6 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
+import { offlineDb } from '@/lib/offlineDb';
 import { generateInsuredSummaryPDF, generateInsuredCardPDF, type InsuredSummaryPDFData, type InsuredCardPDFData } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
 import { auditLog } from '@/lib/auditLog';
@@ -76,10 +77,13 @@ export default function Insured() {
       // Delete reimbursements linked to this insured
       await supabase.from('reimbursements').delete().eq('insured_id', insuredToDelete.id);
       
-      // Delete the insured
+      // Delete the insured from Supabase
       const { error } = await supabase.from('insured').delete().eq('id', insuredToDelete.id);
       
       if (error) throw error;
+      
+      // Also delete from local IndexedDB to ensure immediate UI update
+      await offlineDb.insured.delete(insuredToDelete.id);
       
       toast.success('Suppression réussie', { description: `L'assuré ${insuredToDelete.first_name} ${insuredToDelete.last_name} a été supprimé.` });
       auditLog.delete('insured', `Suppression de l'assuré ${insuredToDelete.first_name} ${insuredToDelete.last_name}`, insuredToDelete.id);
