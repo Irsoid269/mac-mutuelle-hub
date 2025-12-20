@@ -613,7 +613,7 @@ export default function Reimbursements() {
                           {r.status === 'valide' && (
                             <DropdownMenuItem
                               className="gap-2"
-                              onClick={() => handleStatusChange(r.id, 'paye')}
+                              onClick={() => handleStatusChange(r.id, 'paye', r.approved_amount, r.approved_amount)}
                             >
                               <CheckCircle className="w-4 h-4" />
                               Marquer comme payé
