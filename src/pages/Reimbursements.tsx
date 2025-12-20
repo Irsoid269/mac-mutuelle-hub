@@ -92,7 +92,17 @@ export default function Reimbursements() {
   } = useReimbursementsDataOffline(searchTerm, statusFilter);
 
   const { providers, getProvidersByType } = useProvidersData();
-  const { calculateApprovedAmount, getCeilingForCareType } = useReimbursementCeilings();
+  const { ceilings, calculateApprovedAmount, getCeilingForCareType } = useReimbursementCeilings();
+
+  // Get estimated reimbursement for form preview
+  const getFormEstimate = () => {
+    if (!formData.care_type || !formData.claimed_amount) return null;
+    const claimedAmount = parseFloat(formData.claimed_amount);
+    if (isNaN(claimedAmount) || claimedAmount <= 0) return null;
+    return calculateApprovedAmount(formData.care_type, claimedAmount);
+  };
+  
+  const formEstimate = getFormEstimate();
 
   // Update filtered providers when care type changes
   useEffect(() => {
@@ -329,12 +339,14 @@ export default function Reimbursements() {
                       <SelectValue placeholder="Sélectionner" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="consultation">Consultation</SelectItem>
-                      <SelectItem value="hospitalisation">Hospitalisation</SelectItem>
-                      <SelectItem value="pharmacie">Pharmacie</SelectItem>
-                      <SelectItem value="analyses">Analyses</SelectItem>
-                      <SelectItem value="radiologie">Radiologie</SelectItem>
-                      <SelectItem value="autre">Autre</SelectItem>
+                      {ceilings.filter(c => c.is_active).map((ceiling) => (
+                        <SelectItem key={ceiling.id} value={ceiling.care_type}>
+                          {ceiling.care_type} ({ceiling.reimbursement_rate}%)
+                        </SelectItem>
+                      ))}
+                      {ceilings.filter(c => c.is_active).length === 0 && (
+                        <SelectItem value="autre">Autre</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -397,6 +409,35 @@ export default function Reimbursements() {
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 />
               </div>
+              
+              {/* Estimation du remboursement */}
+              {formEstimate && (
+                <div className="bg-muted/50 border border-border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Calculator className="w-4 h-4 text-primary" />
+                    Estimation du remboursement
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Taux appliqué :</span>
+                      <span className="ml-2 font-medium">{formEstimate.rate}%</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Plafond :</span>
+                      <span className="ml-2 font-medium">{formatCurrency(formEstimate.ceiling)}</span>
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-border">
+                    <span className="text-muted-foreground">Montant estimé :</span>
+                    <span className="ml-2 text-lg font-semibold text-primary">
+                      {formatCurrency(formEstimate.approvedAmount)}
+                    </span>
+                    {formEstimate.appliedCeiling && (
+                      <span className="ml-2 text-xs text-warning">(plafond appliqué)</span>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="flex justify-end gap-3 pt-4">
                 <Button variant="outline" onClick={() => setIsFormOpen(false)}>
                   Annuler
