@@ -271,6 +271,7 @@ export type Database = {
           address: string | null
           client_code: string
           contract_number: string
+          contract_type: Database["public"]["Enums"]["contract_type"]
           created_at: string
           created_by: string | null
           email: string | null
@@ -286,6 +287,7 @@ export type Database = {
           address?: string | null
           client_code: string
           contract_number: string
+          contract_type?: Database["public"]["Enums"]["contract_type"]
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -301,6 +303,7 @@ export type Database = {
           address?: string | null
           client_code?: string
           contract_number?: string
+          contract_type?: Database["public"]["Enums"]["contract_type"]
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -903,6 +906,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "agent" | "medecin" | "comptabilite" | "dirigeant"
       care_status: "soumis" | "en_verification" | "valide" | "ferme" | "rejete"
+      contract_type: "entreprise" | "famille"
       document_type:
         | "souscription"
         | "remboursement"
@@ -1061,6 +1065,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "agent", "medecin", "comptabilite", "dirigeant"],
       care_status: ["soumis", "en_verification", "valide", "ferme", "rejete"],
+      contract_type: ["entreprise", "famille"],
       document_type: [
         "souscription",
         "remboursement",

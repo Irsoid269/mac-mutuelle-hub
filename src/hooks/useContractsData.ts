@@ -6,6 +6,7 @@ interface Contract {
   contract_number: string;
   client_code: string;
   raison_sociale: string;
+  contract_type: 'entreprise' | 'famille';
   status: string;
   start_date: string;
   end_date: string | null;
