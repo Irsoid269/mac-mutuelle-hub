@@ -17,6 +17,7 @@ CREATE TYPE public.provider_type AS ENUM ('hopital', 'clinique', 'laboratoire', 
 CREATE TYPE public.reimbursement_status AS ENUM ('soumis', 'verification', 'valide', 'paye', 'rejete');
 CREATE TYPE public.relationship_type AS ENUM ('conjoint', 'enfant', 'parent', 'autre');
 CREATE TYPE public.subscription_status AS ENUM ('en_attente', 'validee', 'rejetee', 'reserve_medicale');
+CREATE TYPE public.contract_type AS ENUM ('entreprise', 'famille');
 
 -- ============================================
 -- 2. TABLES PRINCIPALES
@@ -49,6 +50,7 @@ CREATE TABLE public.contracts (
   contract_number text NOT NULL UNIQUE,
   client_code text NOT NULL UNIQUE,
   raison_sociale text NOT NULL,
+  contract_type public.contract_type NOT NULL DEFAULT 'entreprise',
   address text,
   phone text,
   email text,
