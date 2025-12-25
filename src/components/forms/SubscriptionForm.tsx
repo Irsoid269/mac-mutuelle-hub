@@ -46,6 +46,7 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
   const [clientCode, setClientCode] = useState('');
   const [contractNumber, setContractNumber] = useState('');
   const [raisonSociale, setRaisonSociale] = useState('');
+  const [contractType, setContractType] = useState<'entreprise' | 'famille'>('entreprise');
   const [contractAddress, setContractAddress] = useState('');
   const [contractPhone, setContractPhone] = useState('');
   const [contractEmail, setContractEmail] = useState('');
@@ -185,6 +186,7 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
           client_code: clientCode,
           contract_number: contractNumber,
           raison_sociale: raisonSociale,
+          contract_type: contractType,
           address: contractAddress || null,
           phone: contractPhone || null,
           email: contractEmail || null,
@@ -390,6 +392,18 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
                   onChange={(e) => setRaisonSociale(e.target.value)}
                   required
                 />
+              </div>
+              <div className="input-group md:col-span-2">
+                <Label className="input-label">Type de contrat *</Label>
+                <Select value={contractType} onValueChange={(v) => setContractType(v as 'entreprise' | 'famille')}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner le type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="entreprise">Entreprise</SelectItem>
+                    <SelectItem value="famille">Famille</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="input-group">
                 <Label className="input-label">Téléphone</Label>
