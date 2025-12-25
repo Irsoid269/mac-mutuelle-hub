@@ -315,6 +315,7 @@ export default function Subscriptions() {
               <tr>
                 <th>N° Contrat</th>
                 <th>Client</th>
+                <th>Type</th>
                 <th>Assuré principal</th>
                 <th>Date création</th>
                 <th>Statut</th>
@@ -324,7 +325,7 @@ export default function Subscriptions() {
             <tbody>
               {contracts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <td colSpan={7} className="text-center py-8 text-muted-foreground">
                     Aucune souscription trouvée
                   </td>
                 </tr>
@@ -341,6 +342,15 @@ export default function Subscriptions() {
                         <p className="font-medium text-foreground">{contract.raison_sociale}</p>
                         <p className="text-xs text-muted-foreground">Code: {contract.client_code}</p>
                       </div>
+                    </td>
+                    <td>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        contract.contract_type === 'entreprise' 
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' 
+                          : 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
+                      }`}>
+                        {contract.contract_type === 'entreprise' ? 'Entreprise' : 'Famille'}
+                      </span>
                     </td>
                     <td>{getInsuredName(contract.insured)}</td>
                     <td>{format(new Date(contract.created_at), 'dd/MM/yyyy', { locale: fr })}</td>
@@ -411,9 +421,19 @@ export default function Subscriptions() {
                     <p className="text-xs text-muted-foreground">Code Client</p>
                     <p className="font-mono font-medium">{selectedContract.client_code}</p>
                   </div>
-                  <div className="p-3 rounded-lg bg-muted/50 col-span-2">
+                  <div className="p-3 rounded-lg bg-muted/50">
                     <p className="text-xs text-muted-foreground">Raison Sociale</p>
                     <p className="font-medium">{selectedContract.raison_sociale}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground">Type de contrat</p>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      selectedContract.contract_type === 'entreprise' 
+                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' 
+                        : 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
+                    }`}>
+                      {selectedContract.contract_type === 'entreprise' ? 'Entreprise' : 'Famille'}
+                    </span>
                   </div>
                   <div className="p-3 rounded-lg bg-muted/50">
                     <p className="text-xs text-muted-foreground">Statut</p>

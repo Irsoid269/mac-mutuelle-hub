@@ -7,6 +7,7 @@ interface Contract {
   contract_number: string;
   client_code: string;
   raison_sociale: string;
+  contract_type: 'entreprise' | 'famille';
   status: string;
   start_date: string;
   end_date: string | null;
@@ -54,6 +55,7 @@ export function useContractsDataOffline(searchTerm: string = '', statusFilter: s
         contract_number: contract.contract_number,
         client_code: contract.client_code,
         raison_sociale: contract.raison_sociale,
+        contract_type: (contract as any).contract_type || 'entreprise',
         status: contract.status,
         start_date: contract.start_date,
         end_date: contract.end_date || null,
