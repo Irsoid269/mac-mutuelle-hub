@@ -242,23 +242,46 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
         if (spouseError) console.error('Error creating spouse:', spouseError);
       }
 
-      // 4. Create family members as beneficiaries
+      // 4. Create family members as beneficiaries OR employees as insured
       const validMembers = familyMembers.filter(m => m.first_name && m.last_name && m.birth_date);
       if (validMembers.length > 0) {
-        const { error: membersError } = await supabase
-          .from('beneficiaries')
-          .insert(
-            validMembers.map(member => ({
-              insured_id: insuredData.id,
-              first_name: member.first_name,
-              last_name: member.last_name,
-              birth_date: member.birth_date,
-              relationship: member.relationship,
-              gender: member.gender,
-            }))
-          );
+        if (contractType === 'entreprise') {
+          // For enterprise contracts, add members as additional insured (employees)
+          for (const member of validMembers) {
+            const employeeMatricule = generateMatricule();
+            const { error: employeeError } = await supabase
+              .from('insured')
+              .insert({
+                contract_id: contractData.id,
+                matricule: employeeMatricule,
+                first_name: member.first_name,
+                last_name: member.last_name,
+                birth_date: member.birth_date,
+                gender: member.gender as 'M' | 'F',
+                marital_status: 'celibataire',
+                insurance_start_date: insuranceStartDate || new Date().toISOString().split('T')[0],
+                status: 'en_attente',
+              });
 
-        if (membersError) console.error('Error creating family members:', membersError);
+            if (employeeError) console.error('Error creating employee:', employeeError);
+          }
+        } else {
+          // For family contracts, add members as beneficiaries
+          const { error: membersError } = await supabase
+            .from('beneficiaries')
+            .insert(
+              validMembers.map(member => ({
+                insured_id: insuredData.id,
+                first_name: member.first_name,
+                last_name: member.last_name,
+                birth_date: member.birth_date,
+                relationship: member.relationship,
+                gender: member.gender,
+              }))
+            );
+
+          if (membersError) console.error('Error creating family members:', membersError);
+        }
       }
 
       // 5. Create health declarations
@@ -350,7 +373,7 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
           </TabsTrigger>
           <TabsTrigger value="famille" className="gap-2">
             <Users className="w-4 h-4" />
-            <span className="hidden sm:inline">Famille</span>
+            <span className="hidden sm:inline">{contractType === 'entreprise' ? 'Employés' : 'Famille'}</span>
           </TabsTrigger>
           <TabsTrigger value="sante" className="gap-2">
             <Heart className="w-4 h-4" />
@@ -611,15 +634,21 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
 
         <TabsContent value="famille" className="space-y-4 mt-6">
           <div className="form-section">
-            <h3 className="form-section-title">Membres de la famille pris en charge</h3>
+            <h3 className="form-section-title">
+              {contractType === 'entreprise' ? 'Employés à assurer' : 'Membres de la famille pris en charge'}
+            </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Ajoutez les enfants et autres membres de la famille à couvrir
+              {contractType === 'entreprise' 
+                ? 'Ajoutez les employés de l\'entreprise à couvrir' 
+                : 'Ajoutez les enfants et autres membres de la famille à couvrir'}
             </p>
 
             {familyMembers.map((member, index) => (
               <div key={index} className="p-4 border border-border rounded-lg mb-4">
                 <div className="flex justify-between items-center mb-3">
-                  <h4 className="text-sm font-medium text-foreground">Membre {index + 1}</h4>
+                  <h4 className="text-sm font-medium text-foreground">
+                    {contractType === 'entreprise' ? `Employé ${index + 1}` : `Membre ${index + 1}`}
+                  </h4>
                   {familyMembers.length > 1 && (
                     <Button
                       type="button"
@@ -657,22 +686,24 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
                       onChange={(e) => updateFamilyMember(index, 'birth_date', e.target.value)}
                     />
                   </div>
-                  <div className="input-group">
-                    <Label className="input-label">Parenté</Label>
-                    <Select
-                      value={member.relationship}
-                      onValueChange={(v) => updateFamilyMember(index, 'relationship', v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Lien" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="enfant">Enfant</SelectItem>
-                        <SelectItem value="parent">Parent</SelectItem>
-                        <SelectItem value="autre">Autre</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {contractType === 'famille' && (
+                    <div className="input-group">
+                      <Label className="input-label">Parenté</Label>
+                      <Select
+                        value={member.relationship}
+                        onValueChange={(v) => updateFamilyMember(index, 'relationship', v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Lien" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="enfant">Enfant</SelectItem>
+                          <SelectItem value="parent">Parent</SelectItem>
+                          <SelectItem value="autre">Autre</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div className="input-group">
                     <Label className="input-label">Sexe</Label>
                     <Select
@@ -693,7 +724,7 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
             ))}
 
             <Button type="button" variant="outline" className="w-full" onClick={addFamilyMember}>
-              + Ajouter un membre
+              + Ajouter {contractType === 'entreprise' ? 'un employé' : 'un membre'}
             </Button>
           </div>
         </TabsContent>
