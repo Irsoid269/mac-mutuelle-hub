@@ -164,10 +164,22 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
       return;
     }
 
-    if (!lastName || !firstName || !birthDate) {
-      toast.error("Veuillez remplir les informations de l'assuré principal");
-      setCurrentTab('assure');
-      return;
+    // Pour les contrats famille, l'assuré principal est obligatoire
+    // Pour les contrats entreprise, le représentant est optionnel mais les employés sont obligatoires
+    if (contractType === 'famille') {
+      if (!lastName || !firstName || !birthDate) {
+        toast.error("Veuillez remplir les informations de l'assuré principal");
+        setCurrentTab('assure');
+        return;
+      }
+    } else {
+      // Pour entreprise, vérifier qu'il y a au moins un employé
+      const validEmployees = familyMembers.filter(m => m.first_name && m.last_name && m.birth_date);
+      if (validEmployees.length === 0) {
+        toast.error("Veuillez ajouter au moins un employé à assurer");
+        setCurrentTab('famille');
+        return;
+      }
     }
 
     if (!engagement) {
@@ -197,36 +209,42 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
 
       if (contractError) throw contractError;
 
-      // 2. Create the main insured
-      const matricule = generateMatricule();
-      const { data: insuredData, error: insuredError } = await supabase
-        .from('insured')
-        .insert({
-          contract_id: contractData.id,
-          matricule,
-          first_name: firstName,
-          last_name: lastName,
-          maiden_name: maidenName || null,
-          birth_date: birthDate,
-          birth_place: birthPlace || null,
-          gender,
-          marital_status: maritalStatus as any,
-          phone: phone || null,
-          email: email || null,
-          job_title: jobTitle || null,
-          employer: employer || null,
-          work_location: workLocation || null,
-          address: address || null,
-          insurance_start_date: insuranceStartDate || new Date().toISOString().split('T')[0],
-          status: 'en_attente',
-        })
-        .select()
-        .single();
+      // 2. Pour les contrats famille, créer l'assuré principal
+      // Pour les contrats entreprise, on saute cette étape (l'entreprise est le contractant)
+      let insuredData: { id: string } | null = null;
+      
+      if (contractType === 'famille') {
+        const matricule = generateMatricule();
+        const { data, error: insuredError } = await supabase
+          .from('insured')
+          .insert({
+            contract_id: contractData.id,
+            matricule,
+            first_name: firstName,
+            last_name: lastName,
+            maiden_name: maidenName || null,
+            birth_date: birthDate,
+            birth_place: birthPlace || null,
+            gender,
+            marital_status: maritalStatus as any,
+            phone: phone || null,
+            email: email || null,
+            job_title: jobTitle || null,
+            employer: employer || null,
+            work_location: workLocation || null,
+            address: address || null,
+            insurance_start_date: insuranceStartDate || new Date().toISOString().split('T')[0],
+            status: 'en_attente',
+          })
+          .select()
+          .single();
 
-      if (insuredError) throw insuredError;
+        if (insuredError) throw insuredError;
+        insuredData = data;
+      }
 
-      // 3. Create spouse as beneficiary if married and spouse info provided
-      if (maritalStatus === 'marie' && spouseFirstName && spouseLastName && spouseBirthDate) {
+      // 3. Create spouse as beneficiary if married and spouse info provided (only for famille)
+      if (contractType === 'famille' && insuredData && maritalStatus === 'marie' && spouseFirstName && spouseLastName && spouseBirthDate) {
         const { error: spouseError } = await supabase
           .from('beneficiaries')
           .insert({
@@ -242,11 +260,11 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
         if (spouseError) console.error('Error creating spouse:', spouseError);
       }
 
-      // 4. Create family members as beneficiaries OR employees as insured
+      // 4. Create employees as insured OR family members as beneficiaries
       const validMembers = familyMembers.filter(m => m.first_name && m.last_name && m.birth_date);
       if (validMembers.length > 0) {
         if (contractType === 'entreprise') {
-          // For enterprise contracts, add members as additional insured (employees)
+          // For enterprise contracts, add employees as insured
           for (const member of validMembers) {
             const employeeMatricule = generateMatricule();
             const { error: employeeError } = await supabase
@@ -259,13 +277,14 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
                 birth_date: member.birth_date,
                 gender: member.gender as 'M' | 'F',
                 marital_status: 'celibataire',
+                employer: raisonSociale, // L'employeur est l'entreprise contractante
                 insurance_start_date: insuranceStartDate || new Date().toISOString().split('T')[0],
                 status: 'en_attente',
               });
 
             if (employeeError) console.error('Error creating employee:', employeeError);
           }
-        } else {
+        } else if (insuredData) {
           // For family contracts, add members as beneficiaries
           const { error: membersError } = await supabase
             .from('beneficiaries')
@@ -284,27 +303,32 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
         }
       }
 
-      // 5. Create health declarations
-      const declarations = healthDeclarations.filter(d => d.answer);
-      if (declarations.length > 0) {
-        const { error: declarationsError } = await supabase
-          .from('health_declarations')
-          .insert(
-            declarations.map(d => ({
-              insured_id: insuredData.id,
-              question: d.question,
-              answer: d.answer,
-              details: d.details || null,
-            }))
-          );
+      // 5. Create health declarations (only for famille contracts with insured)
+      if (contractType === 'famille' && insuredData) {
+        const declarations = healthDeclarations.filter(d => d.answer);
+        if (declarations.length > 0) {
+          const { error: declarationsError } = await supabase
+            .from('health_declarations')
+            .insert(
+              declarations.map(d => ({
+                insured_id: insuredData.id,
+                question: d.question,
+                answer: d.answer,
+                details: d.details || null,
+              }))
+            );
 
-        if (declarationsError) console.error('Error creating health declarations:', declarationsError);
+          if (declarationsError) console.error('Error creating health declarations:', declarationsError);
+        }
       }
 
       // Log audit
       auditLog.create('contract', `Nouvelle souscription ${contractNumber} - ${raisonSociale}`, contractData.id);
 
-      toast.success(`Souscription créée - Matricule: ${matricule}`);
+      const successMessage = contractType === 'entreprise' 
+        ? `Contrat entreprise créé - ${validMembers.length} employé(s) enregistré(s)`
+        : `Souscription créée - Matricule: ${insuredData ? 'OK' : 'N/A'}`;
+      toast.success(successMessage);
 
       onClose();
     } catch (error: any) {
@@ -362,22 +386,24 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Tabs value={currentTab} onValueChange={setCurrentTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className={`grid w-full ${contractType === 'entreprise' ? 'grid-cols-3' : 'grid-cols-4'}`}>
           <TabsTrigger value="contractant" className="gap-2">
             <FileText className="w-4 h-4" />
-            <span className="hidden sm:inline">Contractant</span>
+            <span className="hidden sm:inline">{contractType === 'entreprise' ? 'Entreprise' : 'Contractant'}</span>
           </TabsTrigger>
-          <TabsTrigger value="assure" className="gap-2">
-            <User className="w-4 h-4" />
-            <span className="hidden sm:inline">Assuré</span>
-          </TabsTrigger>
+          {contractType === 'famille' && (
+            <TabsTrigger value="assure" className="gap-2">
+              <User className="w-4 h-4" />
+              <span className="hidden sm:inline">Assuré Principal</span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="famille" className="gap-2">
             <Users className="w-4 h-4" />
             <span className="hidden sm:inline">{contractType === 'entreprise' ? 'Employés' : 'Famille'}</span>
           </TabsTrigger>
           <TabsTrigger value="sante" className="gap-2">
             <Heart className="w-4 h-4" />
-            <span className="hidden sm:inline">Santé</span>
+            <span className="hidden sm:inline">{contractType === 'entreprise' ? 'Validation' : 'Santé'}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -457,6 +483,7 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
           </div>
         </TabsContent>
 
+        {contractType === 'famille' && (
         <TabsContent value="assure" className="space-y-4 mt-6">
           <div className="form-section">
             <h3 className="form-section-title">Informations de l'Assuré Principal</h3>
@@ -631,6 +658,7 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
             </div>
           )}
         </TabsContent>
+        )}
 
         <TabsContent value="famille" className="space-y-4 mt-6">
           <div className="form-section">
@@ -730,46 +758,68 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
         </TabsContent>
 
         <TabsContent value="sante" className="space-y-4 mt-6">
-          <div className="form-section">
-            <h3 className="form-section-title">Déclaration de Santé</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Veuillez répondre aux questions suivantes concernant votre état de santé
-            </p>
+          {contractType === 'famille' && (
+            <div className="form-section">
+              <h3 className="form-section-title">Déclaration de Santé</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Veuillez répondre aux questions suivantes concernant votre état de santé
+              </p>
 
-            <div className="space-y-4">
-              {healthDeclarations.map((declaration, index) => (
-                <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                  <Checkbox
-                    id={`q-${index}`}
-                    className="mt-1"
-                    checked={declaration.answer}
-                    onCheckedChange={(checked) => {
-                      const updated = [...healthDeclarations];
-                      updated[index] = { ...updated[index], answer: !!checked };
-                      setHealthDeclarations(updated);
-                    }}
-                  />
-                  <div className="flex-1">
-                    <Label htmlFor={`q-${index}`} className="text-sm font-medium cursor-pointer">
-                      {declaration.question}
-                    </Label>
-                    {declaration.answer && (
-                      <Textarea
-                        placeholder="Si oui, précisez..."
-                        className="mt-2 h-20"
-                        value={declaration.details}
-                        onChange={(e) => {
-                          const updated = [...healthDeclarations];
-                          updated[index] = { ...updated[index], details: e.target.value };
-                          setHealthDeclarations(updated);
-                        }}
-                      />
-                    )}
+              <div className="space-y-4">
+                {healthDeclarations.map((declaration, index) => (
+                  <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+                    <Checkbox
+                      id={`q-${index}`}
+                      className="mt-1"
+                      checked={declaration.answer}
+                      onCheckedChange={(checked) => {
+                        const updated = [...healthDeclarations];
+                        updated[index] = { ...updated[index], answer: !!checked };
+                        setHealthDeclarations(updated);
+                      }}
+                    />
+                    <div className="flex-1">
+                      <Label htmlFor={`q-${index}`} className="text-sm font-medium cursor-pointer">
+                        {declaration.question}
+                      </Label>
+                      {declaration.answer && (
+                        <Textarea
+                          placeholder="Si oui, précisez..."
+                          className="mt-2 h-20"
+                          value={declaration.details}
+                          onChange={(e) => {
+                            const updated = [...healthDeclarations];
+                            updated[index] = { ...updated[index], details: e.target.value };
+                            setHealthDeclarations(updated);
+                          }}
+                        />
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {contractType === 'entreprise' && (
+            <div className="form-section">
+              <h3 className="form-section-title">Récapitulatif du contrat entreprise</h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between p-3 bg-muted/30 rounded-lg">
+                  <span className="text-muted-foreground">Entreprise :</span>
+                  <span className="font-medium">{raisonSociale || '-'}</span>
+                </div>
+                <div className="flex justify-between p-3 bg-muted/30 rounded-lg">
+                  <span className="text-muted-foreground">N° Contrat :</span>
+                  <span className="font-medium font-mono">{contractNumber}</span>
+                </div>
+                <div className="flex justify-between p-3 bg-muted/30 rounded-lg">
+                  <span className="text-muted-foreground">Employés à assurer :</span>
+                  <span className="font-medium">{familyMembers.filter(m => m.first_name && m.last_name).length}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="form-section">
             <h3 className="form-section-title">Engagement</h3>
@@ -781,8 +831,10 @@ export function SubscriptionForm({ onClose }: SubscriptionFormProps) {
                 onCheckedChange={(checked) => setEngagement(!!checked)}
               />
               <Label htmlFor="engagement" className="text-sm text-muted-foreground cursor-pointer">
-                Je certifie que les informations fournies sont exactes et complètes. 
-                Je comprends qu'une fausse déclaration peut entraîner la nullité du contrat.
+                {contractType === 'entreprise' 
+                  ? "Je certifie que les informations fournies sont exactes et complètes. En tant que représentant de l'entreprise, je m'engage à respecter les conditions du contrat."
+                  : "Je certifie que les informations fournies sont exactes et complètes. Je comprends qu'une fausse déclaration peut entraîner la nullité du contrat."
+                }
               </Label>
             </div>
           </div>
