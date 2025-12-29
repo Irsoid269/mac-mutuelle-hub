@@ -12,9 +12,10 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Building2, Users, CheckCircle, Loader2, Briefcase } from 'lucide-react';
+import { Building2, Users, CheckCircle, Loader2, Briefcase, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { auditLog } from '@/lib/auditLog';
+import { generateEnterpriseSubscriptionPDF } from '@/lib/pdfGenerator';
 
 interface EnterpriseSubscriptionFormProps {
   onClose: () => void;
@@ -111,6 +112,55 @@ export function EnterpriseSubscriptionForm({ onClose }: EnterpriseSubscriptionFo
 
   const removeEmployee = (index: number) => {
     setEmployees(employees.filter((_, i) => i !== index));
+  };
+
+  const handleGeneratePDF = async () => {
+    if (!raisonSociale) {
+      toast.error("Veuillez renseigner la raison sociale de l'entreprise");
+      return;
+    }
+
+    const validEmployees = employees.filter(m => m.first_name && m.last_name && m.birth_date);
+    if (validEmployees.length === 0) {
+      toast.error("Veuillez ajouter au moins un employé");
+      return;
+    }
+
+    try {
+      await generateEnterpriseSubscriptionPDF({
+        client_code: clientCode,
+        contract_number: contractNumber,
+        raison_sociale: raisonSociale,
+        secteur_activite: secteurActivite || undefined,
+        siret: siret || undefined,
+        address: contractAddress || undefined,
+        phone: contractPhone || undefined,
+        email: contractEmail || undefined,
+        insurance_start_date: insuranceStartDate || undefined,
+        representant: (representantNom || representantPrenom) ? {
+          nom: representantNom || undefined,
+          prenom: representantPrenom || undefined,
+          fonction: representantFonction || undefined,
+          phone: representantPhone || undefined,
+          email: representantEmail || undefined,
+        } : undefined,
+        employees: validEmployees.map(emp => ({
+          first_name: emp.first_name,
+          last_name: emp.last_name,
+          birth_date: emp.birth_date,
+          gender: emp.gender,
+          phone: emp.phone || undefined,
+          email: emp.email || undefined,
+          job_title: emp.job_title || undefined,
+        })),
+      });
+      
+      toast.success('Fiche de souscription entreprise téléchargée');
+      auditLog.export('contract', 1);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Erreur lors de la génération du PDF');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -501,20 +551,31 @@ export function EnterpriseSubscriptionForm({ onClose }: EnterpriseSubscriptionFo
         </TabsContent>
       </Tabs>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-border">
-        <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
-          Annuler
+      <div className="flex justify-between gap-3 pt-4 border-t border-border">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={handleGeneratePDF}
+          className="gap-2"
+        >
+          <Download className="w-4 h-4" />
+          Télécharger la fiche
         </Button>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Enregistrement...
-            </>
-          ) : (
-            'Créer le contrat entreprise'
-          )}
-        </Button>
+        <div className="flex gap-3">
+          <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
+            Annuler
+          </Button>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Enregistrement...
+              </>
+            ) : (
+              'Créer le contrat entreprise'
+            )}
+          </Button>
+        </div>
       </div>
     </form>
   );

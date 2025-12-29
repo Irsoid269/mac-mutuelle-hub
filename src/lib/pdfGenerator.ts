@@ -2442,3 +2442,270 @@ export const generateBeneficiaryCardPDF = async (beneficiary: {
   // Keep returning a data URL for backward compatibility (callers may ignore it)
   return doc.output('dataurlstring');
 };
+
+// ===== ENTERPRISE SUBSCRIPTION PDF =====
+export interface EnterpriseSubscriptionPDFData {
+  client_code: string;
+  contract_number: string;
+  raison_sociale: string;
+  secteur_activite?: string;
+  siret?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  insurance_start_date?: string;
+  representant?: {
+    nom?: string;
+    prenom?: string;
+    fonction?: string;
+    phone?: string;
+    email?: string;
+  };
+  employees: {
+    first_name: string;
+    last_name: string;
+    birth_date: string;
+    gender: 'M' | 'F';
+    phone?: string;
+    email?: string;
+    job_title?: string;
+  }[];
+  signature_location?: string;
+  signature_date?: string;
+}
+
+export const generateEnterpriseSubscriptionPDF = async (
+  data: EnterpriseSubscriptionPDFData
+): Promise<void> => {
+  await ensureLogo();
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  
+  // ===== PAGE 1: HEADER =====
+  // Top accent bar (yellow)
+  doc.setFillColor(...COLORS.accent);
+  doc.rect(0, 0, pageWidth, 5, 'F');
+  
+  // Main header background
+  doc.setFillColor(...COLORS.white);
+  doc.rect(0, 5, pageWidth, 45, 'F');
+  
+  // Bottom border (blue)
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(0, 50, pageWidth, 2, 'F');
+  
+  // Add logo
+  if (logoBase64) {
+    try {
+      doc.addImage(logoBase64, 'PNG', 10, 10, 35, 32);
+    } catch {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(28);
+      doc.setTextColor(...COLORS.primary);
+      doc.text('MAC', 15, 28);
+    }
+  } else {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(28);
+    doc.setTextColor(...COLORS.primary);
+    doc.text('MAC', 15, 28);
+  }
+  
+  // Company name next to logo
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(...COLORS.primary);
+  doc.text('MAC ASSURANCES', 52, 22);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.textLight);
+  doc.text("Mutuelle d'Assurance des Comores", 52, 30);
+  doc.text('Avenue de Strasbourg, Moroni-Bacha', 52, 38);
+  
+  // Contact info (right side)
+  doc.setTextColor(...COLORS.text);
+  doc.setFontSize(8);
+  doc.text('www.macassurances.com', pageWidth - 15, 30, { align: 'right' });
+  doc.text('mac.assurances@gmail.com', pageWidth - 15, 36, { align: 'right' });
+  doc.text('Tél: +269 773 00 00', pageWidth - 15, 42, { align: 'right' });
+  
+  let y = 60;
+  
+  // Title
+  doc.setFillColor(...COLORS.lightGray);
+  doc.roundedRect(25, y, pageWidth - 50, 22, 3, 3, 'F');
+  doc.setTextColor(...COLORS.primary);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('FORMULAIRE DE SOUSCRIPTION', pageWidth / 2, y + 10, { align: 'center' });
+  doc.setFontSize(12);
+  doc.setTextColor(...COLORS.text);
+  doc.text('Assurance Groupe Entreprise', pageWidth / 2, y + 18, { align: 'center' });
+  
+  y += 32;
+  
+  // ===== ENTERPRISE INFORMATION SECTION =====
+  y = addSectionTitle(doc, "Informations de l'Entreprise", y);
+  
+  // Info box
+  doc.setFillColor(...COLORS.lightGray);
+  doc.roundedRect(15, y, pageWidth - 30, 50, 2, 2, 'F');
+  
+  addInfoRow(doc, 'Code Client', data.client_code, 20, y + 8, 30);
+  addInfoRow(doc, 'N° Contrat', data.contract_number, 110, y + 8, 35);
+  addInfoRow(doc, 'Raison Sociale', data.raison_sociale, 20, y + 18, 40);
+  if (data.secteur_activite) {
+    addInfoRow(doc, 'Secteur', data.secteur_activite, 110, y + 18, 25);
+  }
+  if (data.siret) {
+    addInfoRow(doc, 'N° SIRET/RC', data.siret, 20, y + 28, 35);
+  }
+  if (data.address) {
+    addInfoRow(doc, 'Adresse', data.address, 20, y + 38, 25);
+  }
+  if (data.phone) {
+    addInfoRow(doc, 'Tél', data.phone, 110, y + 28, 15);
+  }
+  if (data.email) {
+    addInfoRow(doc, 'Email', data.email, 110, y + 38, 20);
+  }
+  
+  y += 58;
+  
+  // ===== LEGAL REPRESENTATIVE SECTION =====
+  if (data.representant && (data.representant.nom || data.representant.prenom)) {
+    y = addSectionTitle(doc, 'Représentant Légal', y);
+    
+    doc.setFillColor(...COLORS.lightGray);
+    doc.roundedRect(15, y, pageWidth - 30, 25, 2, 2, 'F');
+    
+    const repName = `${data.representant.prenom || ''} ${data.representant.nom || ''}`.trim();
+    addInfoRow(doc, 'Nom', repName, 20, y + 8, 20);
+    if (data.representant.fonction) {
+      addInfoRow(doc, 'Fonction', data.representant.fonction, 90, y + 8, 30);
+    }
+    if (data.representant.phone) {
+      addInfoRow(doc, 'Tél', data.representant.phone, 20, y + 18, 15);
+    }
+    if (data.representant.email) {
+      addInfoRow(doc, 'Email', data.representant.email, 90, y + 18, 20);
+    }
+    
+    y += 33;
+  }
+  
+  // ===== DATE DE DÉBUT =====
+  if (data.insurance_start_date) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...COLORS.primary);
+    doc.text('Date de début de couverture:', 20, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...COLORS.text);
+    doc.text(formatDate(data.insurance_start_date), 85, y);
+    y += 12;
+  }
+  
+  // ===== EMPLOYEES TABLE =====
+  y = addSectionTitle(doc, `Liste des Employés Assurés (${data.employees.length})`, y);
+  
+  const employeeTableData = data.employees.map((emp, idx) => [
+    (idx + 1).toString(),
+    emp.last_name.toUpperCase(),
+    emp.first_name,
+    emp.birth_date ? formatDate(emp.birth_date) : '-',
+    emp.gender === 'M' ? 'M' : 'F',
+    emp.job_title || '-',
+    emp.phone || '-'
+  ]);
+  
+  autoTable(doc, {
+    startY: y,
+    head: [['N°', 'NOM', 'PRÉNOM', 'DATE NAISSANCE', 'SEXE', 'POSTE', 'TÉLÉPHONE']],
+    body: employeeTableData,
+    theme: 'grid',
+    headStyles: {
+      fillColor: COLORS.primary,
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8,
+      halign: 'center'
+    },
+    bodyStyles: {
+      fontSize: 8,
+      textColor: COLORS.text
+    },
+    alternateRowStyles: {
+      fillColor: COLORS.lightGray
+    },
+    columnStyles: {
+      0: { cellWidth: 10, halign: 'center' },
+      1: { cellWidth: 30 },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 28, halign: 'center' },
+      4: { cellWidth: 12, halign: 'center' },
+      5: { cellWidth: 35 },
+      6: { cellWidth: 30 }
+    },
+    margin: { left: 15, right: 15 },
+    didDrawPage: () => {
+      // Add footer on each page
+      addFooter(doc);
+    }
+  });
+  
+  y = getLastTableY(doc) + 15;
+  
+  // Check if we need a new page for signature section
+  if (y > pageHeight - 80) {
+    doc.addPage();
+    y = 20;
+  }
+  
+  // ===== ENGAGEMENT SECTION =====
+  y = addSectionTitle(doc, 'Engagement', y);
+  
+  doc.setFillColor(...COLORS.lightGray);
+  doc.roundedRect(15, y, pageWidth - 30, 35, 3, 3, 'F');
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.text);
+  
+  const engagementText = `En tant que représentant légal de l'entreprise ${data.raison_sociale}, je certifie que les informations fournies dans ce formulaire sont exactes et complètes. Je m'engage à respecter les conditions générales du contrat d'assurance groupe MAC ASSURANCES et à informer la mutuelle de tout changement concernant les employés assurés.`;
+  
+  const splitEngagement = doc.splitTextToSize(engagementText, pageWidth - 50);
+  doc.text(splitEngagement, 20, y + 8);
+  
+  y += 45;
+  
+  // ===== SIGNATURE SECTION =====
+  doc.setFillColor(...COLORS.lightGray);
+  doc.roundedRect(15, y, pageWidth - 30, 40, 3, 3, 'F');
+  
+  // Left side: Fait à / Le
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(...COLORS.text);
+  doc.text('Fait à :', 20, y + 12);
+  doc.setDrawColor(...COLORS.mediumGray);
+  doc.line(38, y + 13, 90, y + 13);
+  
+  doc.text('Le :', 20, y + 25);
+  doc.line(30, y + 26, 90, y + 26);
+  
+  // Right side: Signature
+  doc.setFont('helvetica', 'bold');
+  doc.text('Signature et cachet de l\'entreprise:', 100, y + 12);
+  doc.setDrawColor(...COLORS.mediumGray);
+  doc.rect(100, y + 15, 85, 22);
+  
+  // Add footer
+  addFooter(doc);
+  
+  // Direct download
+  const fileName = `souscription-entreprise-${data.contract_number}.pdf`;
+  doc.save(fileName);
+};
